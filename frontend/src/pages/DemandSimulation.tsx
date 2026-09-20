@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
-  BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, ReferenceLine
+  Bar, CartesianGrid, ComposedChart, Legend, Line,
+  ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis
 } from 'recharts';
 import { Card, CardHeader, CardBody } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -56,11 +56,20 @@ export function DemandSimulation() {
   );
 
   const distData = result?.distribution?.length
-    ? result.distribution.map((d: any, i: number) => ({
-        cost: d.cost,
-        probability: d.density,
-        cumPct: i / result.distribution.length * 100
-      }))
+    ? (() => {
+        const arr = result.distribution as { cost: number; density: number }[];
+        let cum = 0;
+        return arr.map((d: any) => {
+          const p = Number(d.density) || 0;
+          cum += p;
+          return {
+            cost: Number(d.cost) || 0,
+            // backend sends density as count/S (probability mass per bin)
+            probability: p * 100,
+            cumPct: Math.min(100, cum * 100),
+          };
+        });
+      })()
     : [];
 
   return (
@@ -164,45 +173,85 @@ export function DemandSimulation() {
         <div className="simulation-results lg:col-span-3 space-y-6">
           {/* Demand forecast */}
           <Card>
-            <CardHeader><span className="text-sm font-medium text-white">Cost Distribution ({fmt(samples)} simulations)</span></CardHeader>
+            <CardHeader>
+              <div className="flex items-center justify-between w-full">
+                <span className="text-sm font-medium text-white">Cost Distribution ({fmt(samples)} simulations)</span>
+                {distData.length > 0 && (
+                  <span className="text-[10px] font-mono text-[#4a4a60]">{distData.length} bins · histogram + cumulative</span>
+                )}
+              </div>
+            </CardHeader>
             <CardBody>
-              <div className="h-56">
+              <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={distData}>
+                  <ComposedChart data={distData} margin={{ top: 12, right: 12, left: 0, bottom: 8 }} barCategoryGap="12%">
                     <CartesianGrid strokeDasharray="2 4" stroke="#1e1e2e" vertical={false} />
                     <XAxis
                       dataKey="cost"
-                      tick={{ fontSize: 9, fill: '#4a4a60', fontFamily: 'JetBrains Mono' }}
-                      tickFormatter={v => '$' + (v / 1000).toFixed(0) + 'k'}
-                      axisLine={false} tickLine={false}
+                      tick={{ fontSize: 10, fill: '#8a8aa0', fontFamily: 'JetBrains Mono' }}
+                      tickFormatter={v => '$' + (Number(v) / 1000).toFixed(0) + 'k'}
+                      axisLine={{ stroke: '#2a2a3a' }} tickLine={false}
+                      interval={Math.max(0, Math.ceil(distData.length / 8) - 1)}
+                      minTickGap={24}
+                      label={{ value: 'Total cost per simulation →', position: 'insideBottom', offset: -2, fill: '#4a4a60', fontSize: 10 }}
                     />
-                    <YAxis hide />
+                    <YAxis
+                      yAxisId="prob"
+                      tick={{ fontSize: 10, fill: '#8a8aa0', fontFamily: 'JetBrains Mono' }}
+                      tickFormatter={v => `${Number(v).toFixed(0)}%`}
+                      axisLine={false} tickLine={false} width={44}
+                      label={{ value: 'Share of runs', angle: -90, position: 'insideLeft', fill: '#4a4a60', fontSize: 10 }}
+                    />
+                    <YAxis
+                      yAxisId="cum"
+                      orientation="right"
+                      domain={[0, 100]}
+                      tick={{ fontSize: 10, fill: '#8a8aa0', fontFamily: 'JetBrains Mono' }}
+                      tickFormatter={v => `${v}%`}
+                      axisLine={false} tickLine={false} width={44}
+                    />
                     <Tooltip
-                      contentStyle={{ background: '#111118', border: '1px solid #2a2a3a', borderRadius: 6, fontSize: 11 }}
-                      formatter={(v: any) => [`${(Number(v) * 100).toFixed(2)}%`, 'Cumulative']}
+                      contentStyle={{ background: '#111118', border: '1px solid #2a2a3a', borderRadius: 8, fontSize: 11, color: '#e0e0f0' }}
+                      labelFormatter={v => `Cost ${fmtCurrency(Number(v))}`}
+                      formatter={(v: any, name: any) => {
+                        if (name === 'Share of runs') return [`${Number(v).toFixed(2)}% of simulations`, name];
+                        return [`${Number(v).toFixed(1)}% of runs ≤ this cost`, name];
+                      }}
                     />
+                    <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
                     <ReferenceLine
+                      yAxisId="prob"
                       x={result?.expectedTotal ?? (result as any)?.meanCost}
                       stroke="#3b82f6"
                       strokeDasharray="4 2"
-                      label={{ value: 'Expected', fontSize: 9, fill: '#3b82f6', position: 'top' }}
+                      label={{ value: 'Expected', fontSize: 10, fill: '#3b82f6', position: 'top' }}
                     />
                     <ReferenceLine
+                      yAxisId="prob"
                       x={result?.p90 ?? (result as any)?.p95Cost}
                       stroke="#f59e0b"
                       strokeDasharray="4 2"
-                      label={{ value: 'P90', fontSize: 9, fill: '#f59e0b', position: 'top' }}
+                      label={{ value: 'P90', fontSize: 10, fill: '#f59e0b', position: 'top' }}
                     />
-                    <Area
+                    <Bar
+                      yAxisId="prob"
+                      dataKey="probability"
+                      name="Share of runs"
+                      fill="#3b82f6"
+                      fillOpacity={0.75}
+                      radius={[3, 3, 0, 0]}
+                      maxBarSize={26}
+                    />
+                    <Line
+                      yAxisId="cum"
                       type="monotone"
                       dataKey="cumPct"
-                      stackId="1"
-                      fill="#3b82f6"
-                      fillOpacity={0.12}
-                      stroke="#3b82f6"
-                      strokeWidth={1.5}
+                      name="Cumulative %"
+                      stroke="#22c55e"
+                      strokeWidth={2}
+                      dot={false}
                     />
-                  </AreaChart>
+                  </ComposedChart>
                 </ResponsiveContainer>
               </div>
               <div className="flex items-start gap-2 mt-3 text-xs text-[#4a4a60]">
@@ -244,7 +293,7 @@ export function DemandSimulation() {
             <Card>
               <CardHeader><span className="text-sm font-medium text-white">Warehouse Demand &amp; Load (+{result.growthPct ?? growth}% expected demand)</span></CardHeader>
               <CardBody className="space-y-3">
-                {(result.expectedNetwork.warehouseLoads || []).map(w => (
+                {(result.expectedNetwork.warehouseLoads || []).map((w: { id: string; name: string; load: number; capacity: number; util: number }) => (
                   <div key={w.id} className="flex items-center gap-3">
                     <div className="w-28 text-xs text-[#5a5a70] truncate">{w.name}</div>
                     <div className="flex-1 h-6 bg-[#0d0d16] rounded overflow-hidden flex">

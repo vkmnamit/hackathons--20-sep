@@ -11,18 +11,18 @@ import type { Page } from '@/components/layout/Sidebar';
 const COLORS = ['#67e8f9', '#60a5fa', '#a78bfa', '#fbbf24', '#f472b6'];
 
 const FALLBACK_DEMO_RESULT: OptResult = {
-  openWarehouses: ['W1', 'W2', 'W5'], totalCost: 44435, deliveryCost: 20435, fixedCost: 24000, infraCost: 24000,
-  grandTotal: 44435, avgDistance: 3.42, unserved: [], runtimeMs: 4, algorithmUsed: 'exact (Branch & Bound MILP)', optimal: true, savingsPct: 24.8,
+  openWarehouses: ['W1', 'W2', 'W5'], totalCost: 44435, deliveryCost: 20435, fixedCost: 24000,
+  avgDistance: 3.42, unserved: [], runtimeMs: 4, algorithmUsed: 'exact (Branch & Bound MILP)', optimal: true, savingsPct: 24.8,
   assignments: { N01: 'W3', N02: 'W4', N03: 'W1', N04: 'W1', N05: 'W1', N06: 'W1', N07: 'W1', N08: 'W1', N09: 'W2', N10: 'W2', N11: 'W6', N12: 'W2', N13: 'W2', N14: 'W5', N15: 'W5', N16: 'W2' },
-  utilization: [{ id: 'W1', u: 0.82 }, { id: 'W2', u: 0.76 }, { id: 'W5', u: 0.68 }], baselineSingle: { cost: 59120, open: ['W5'], savingsPct: 24.8 },
+  utilization: [{ id: 'W1', u: 0.82 }, { id: 'W2', u: 0.76 }, { id: 'W5', u: 0.68 }], baselineSingle: { total: 59120, open: ['W5'] },
   explanation: ['Selected 3 open warehouses (Basavanagudi Hub, Jayanagar Dock, South Bangalore DC) to minimize grand total cost.', 'Achieved $44,435 grand total cost with 100% neighborhood coverage and zero capacity overload.', 'Saves 24.8% ($14,685) compared to single-warehouse baseline.'],
 };
 
 type WarehouseRow = { name: string; utilization: number; color: string };
 
 function NetworkPulse({ rows }: { rows: WarehouseRow[] }) {
-  const points = rows.map((row, index) => ({ ...row, x: 150 + index * 230, y: index % 2 ? 175 : 245 }));
-  return <div className="network-stage relative h-[385px] overflow-hidden rounded-[1.35rem] border border-cyan-300/20 bg-[#07111e]/95 md:h-[475px]">
+  const points = rows.map((row, index) => ({ ...row, x: 120 + index * 170, y: index % 2 ? 165 : 225 }));
+  return <div className="network-stage relative h-[320px] overflow-hidden rounded-[1.35rem] border border-cyan-300/20 bg-[#07111e]/95 md:h-[400px]">
     <div className="absolute inset-0 network-grid opacity-80" />
     <div className="absolute left-5 top-5 z-10 flex items-center gap-3 text-[10px] font-mono uppercase tracking-[.2em] text-cyan-200/80"><span className="network-icon"><Route size={13} /></span>Live network topology</div>
     <div className="absolute right-5 top-5 z-10 flex items-center gap-2 text-[10px] font-mono text-[#7187a2]"><span className="network-pulse-ring" /> Flow active</div>

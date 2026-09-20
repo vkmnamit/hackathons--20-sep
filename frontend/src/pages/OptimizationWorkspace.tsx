@@ -35,6 +35,26 @@ const DIST_METRICS = [
   { key: 'road',      label: 'Road Network (1.35x Circuity Multiplier)' },
 ];
 
+// In-depth roadmap: mathematical rationale + what the plan means and what to do, in order.
+function MathematicalRationale({ lines }: { lines?: string[] }) {
+  if (!lines?.length) return null;
+  return (
+    <div className="rounded-lg border border-[#1e1e2e] bg-[#0d0d16] p-3.5">
+      <div className="text-[10px] font-mono uppercase tracking-widest text-[#8080a0] mb-2.5 flex items-center gap-1.5">
+        <Compass size={11} className="text-cyan-400" /> Mathematical rationale — in depth
+      </div>
+      <ul className="text-[11px] text-[#8a8aa0] space-y-1.5 leading-relaxed">
+        {lines.map((line, idx) => (
+          <li key={idx} className="flex items-start gap-1.5">
+            <span className="text-blue-400 font-bold">•</span>
+            <span>{line}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 // Vehicle fleet profiles
 export interface VehicleType {
   id: string;
@@ -101,6 +121,11 @@ export function OptimizationWorkspace() {
   const [sweepLoading, setSweepLoading] = useState(false);
   const [medianResult, setMedianResult] = useState<{ x: number; y: number; nearestWarehouse: string; distanceToNearest: number } | null>(null);
 
+  // AI plan review (why this plan + what to do) — non-blocking LLM card
+  const [aiSummary, setAiSummary] = useState<string[]>([]);
+  const [aiVia, setAiVia] = useState<string>('');
+  const [aiLoading, setAiLoading] = useState(false);
+
   // Map state
   const [mapZoom, setMapZoom] = useState(1);
   const [mapSelection, setMapSelection] = useState<{ kind: 'demand' | 'warehouse'; id: string; label: string; detail: string } | null>(null);
@@ -138,10 +163,10 @@ export function OptimizationWorkspace() {
         // Calculate Weiszfeld geometric median
         const out = await api.median({ neighborhoods: scaledNb });
         setMedianResult({
-          x: out.x,
-          y: out.y,
-          nearestWarehouse: out.nearestWarehouse,
-          distanceToNearest: out.distanceToNearest,
+          x: out.median.x,
+          y: out.median.y,
+          nearestWarehouse: '-',
+          distanceToNearest: 0,
         });
         setActiveTab('median');
         setRan(true);
@@ -168,6 +193,19 @@ export function OptimizationWorkspace() {
 
       setResult(out);
       setRan(true);
+      // AI plan review — non-blocking: plan renders instantly, LLM narrative lands when ready.
+      setAiSummary([]); setAiVia(''); setAiLoading(true);
+      fetch('/api/optimize/insights', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          solution: out, candidates: wh,
+          params: { algorithm: algo, distanceMetric: dist, maxServiceRadius: radius, deliveryCostPerKm: effectiveCostPerKm, capacity, fixedCost, minWarehouses: minW, maxWarehouses: maxW },
+          savingsPct: out.savingsPct, nbCount: scaledNb.length,
+        }),
+      }).then(r => r.json())
+        .then((r: { summary?: string[]; narrVia?: string }) => { setAiSummary(r.summary || []); setAiVia(r.narrVia || 'template'); })
+        .catch(() => {})
+        .finally(() => setAiLoading(false));
     } catch (e: any) {
       setErr(e.message || 'Optimization solver failed');
     } finally {
@@ -207,10 +245,10 @@ export function OptimizationWorkspace() {
     try {
       const out = await api.median({ neighborhoods: scaledNb });
       setMedianResult({
-        x: out.x,
-        y: out.y,
-        nearestWarehouse: out.nearestWarehouse,
-        distanceToNearest: out.distanceToNearest,
+        x: out.median.x,
+        y: out.median.y,
+        nearestWarehouse: '-',
+        distanceToNearest: 0,
       });
       setActiveTab('median');
     } catch (e: any) {
@@ -621,19 +659,33 @@ export function OptimizationWorkspace() {
                   </CardBody>
                 </Card>
 
-                {/* Explanation Card */}
-                {result?.explanation && (
-                  <Card>
-                    <CardHeader><span className="text-xs font-semibold text-white uppercase tracking-wider font-mono">Mathematical Rationale</span></CardHeader>
-                    <CardBody>
-                      <ul className="text-[11px] text-[#8080a0] space-y-1.5 leading-relaxed">
-                        {result.explanation.slice(0, 4).map((line, idx) => (
-                          <li key={idx} className="flex items-start gap-1.5">
-                            <span className="text-blue-400 font-bold">•</span>
-                            <span>{line}</span>
-                          </li>
-                        ))}
-                      </ul>
+                {/* AI Plan Review: why this plan won + what to do */}
+                {(aiLoading || aiSummary.length > 0 || result) && (
+                  <Card className="border-blue-500/20">
+                    <CardHeader>
+                      <div className="flex items-center justify-between w-full">
+                        <span className="text-xs font-semibold text-white uppercase tracking-wider font-mono flex items-center gap-1.5">
+                          <Sparkles size={13} className="text-violet-400" /> AI Plan Review — Why This Plan &amp; What To Do
+                        </span>
+                        {aiLoading
+                          ? <Badge variant="muted">thinking…</Badge>
+                          : aiVia ? <Badge variant={aiVia.startsWith('llm') ? 'info' : 'muted'}>{aiVia}</Badge> : null}
+                      </div>
+                    </CardHeader>
+                    <CardBody className="space-y-4">
+                      {aiLoading && !aiSummary.length && (
+                        <div className="flex items-center gap-2 text-xs text-[#8080a0]">
+                          <Loader2 size={13} className="animate-spin" /> Generating AI review of this plan…
+                        </div>
+                      )}
+                      {aiSummary.length ? (
+                        <StepNarration lines={aiSummary} via={aiVia} />
+                      ) : !aiLoading && (
+                        <p className="text-[11px] text-[#6b6b80] leading-relaxed">
+                          Run the optimizer above — the AI reviewer reads the live result and explains why this plan won plus the single best next move.
+                        </p>
+                      )}
+                      {result && <MathematicalRationale lines={result.explanation} />}
                     </CardBody>
                   </Card>
                 )}
@@ -649,7 +701,7 @@ export function OptimizationWorkspace() {
                   <CardBody className="pt-4">
                     <div className="text-[10px] font-mono text-[#8080a0]">SINGLE CENTRAL HUB BASELINE</div>
                     <div className="text-xl font-bold font-mono text-white mt-1">
-                      {result?.baselineSingle ? fmtCurrency(result.baselineSingle.total || result.baselineSingle.cost || 0) : '—'}
+                      {result?.baselineSingle ? fmtCurrency(result.baselineSingle.total) : '—'}
                     </div>
                     <p className="text-[11px] text-[#6b6b80] mt-1">1 Central warehouse serving all demand</p>
                   </CardBody>
@@ -987,7 +1039,7 @@ function WloMapSVG({
   const allProposals = expansion
     ? (expansion.proposals && expansion.proposals.length ? expansion.proposals : (expansion.proposal ? [expansion.proposal] : []))
     : [];
-  allProposals.forEach(p => { xs.push(p.x); ys.push(p.y); });
+  allProposals.forEach((p: { x: number; y: number }) => { xs.push(p.x); ys.push(p.y); });
 
   const rawMinX = xs.length ? Math.min(...xs) : 0;
   const rawMaxX = xs.length ? Math.max(...xs) : 100;
@@ -1208,7 +1260,7 @@ function WloMapSVG({
             );
           })}
           {/* violet: proposed new warehouses + their catchment lines */}
-          {allProposals.map(p => (
+          {allProposals.map((p: { id: string; x: number; y: number; name?: string; capacity?: number }) => (
             <g key={'proposal-' + p.id}>
               {Object.entries(finalAsg).filter(([, wid]) => wid === p.id).map(([nid]) => {
                 const n = neighborhoods.find(x => x.id === nid);
