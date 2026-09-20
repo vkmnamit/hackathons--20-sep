@@ -76,6 +76,38 @@ html.light .bg-\[\#1e1e2e\] { background-color: #e2e8f0 !important; }
 html.light .bg-\[\#06060c\] { background-color: #f1f5f9 !important; }
 html.light .bg-\[\#12121a\] { background-color: #ffffff !important; }
 html.light .bg-\[\#1e3a5f\] { background-color: #dbeafe !important; }
+html.light .bg-\[\#08111d\] { background-color: #ffffff !important; }
+html.light .bg-\[\#07111e\] { background-color: #f1f5f9 !important; }
+html.light .bg-\[\#0a1421\] { background-color: #e2e8f0 !important; }
+html.light .bg-\[\#0d1926\] { background-color: #ffffff !important; }
+html.light .bg-\[\#121526\] { background-color: #ffffff !important; }
+html.light .bg-\[\#1a1720\] { background-color: #ffffff !important; }
+html.light .bg-\[\#102b2d\] { background-color: #f0fdf4 !important; }
+
+html.light .editorial-hero {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+html.light .editorial-hero h1 {
+  color: #0f172a !important;
+}
+html.light .network-stage {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+}
+html.light .primary-kpi {
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%) !important;
+  border-color: #22c55e !important;
+}
+html.light .metric-tile {
+  background: #ffffff !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+html.light .visual-panel {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
 
 html.light .border-\[\#1e1e2e\] { border-color: #e2e8f0 !important; }
 html.light .border-\[\#2a2a3a\] { border-color: #cbd5e1 !important; }

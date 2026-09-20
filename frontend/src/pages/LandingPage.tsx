@@ -218,7 +218,7 @@ export function LandingPage({ onNavigate }: { onNavigate: (p: Page) => void }) {
           logistics constraints using mathematical optimization.
         </p>
 
-        <div className="flex items-center gap-3 mb-16">
+        <div className="flex items-center gap-3 mb-4">
           <Button variant="primary" size="lg" onClick={() => onNavigate('dashboard')}>
             Explore Live Demo <ArrowRight size={15} />
           </Button>
@@ -226,7 +226,7 @@ export function LandingPage({ onNavigate }: { onNavigate: (p: Page) => void }) {
             Sign in
           </Button>
         </div>
-        <p className="-mt-12 mb-12 text-[11px] text-[#4a4a60]">Instant demo access with Bangalore Basavanagudi & Jayanagar dataset pre-loaded.</p>
+        <p className="mb-12 text-[12px] text-[#6b6b80] dark:text-[#8080a0]">Instant demo access with Bangalore Basavanagudi & Jayanagar dataset pre-loaded.</p>
 
         {/* Metrics */}
         <div className="grid grid-cols-3 gap-6 mb-12 max-w-lg">

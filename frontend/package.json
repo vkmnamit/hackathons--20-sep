@@ -12,6 +12,7 @@
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
     "@types/leaflet": "^1.9.22",
+    "@types/three": "^0.186.0",
     "framer-motion": "^13.4.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.47.0",
@@ -20,6 +21,7 @@
     "react-hook-form": "^7.88.0",
     "react-leaflet": "^5.0.0",
     "recharts": "^3.10.1",
+    "three": "^0.186.0",
     "zod": "^4.6.5"
   },
   "devDependencies": {

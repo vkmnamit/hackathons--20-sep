@@ -1,0 +1,114 @@
+/* ThreeUI Animated Top Dock Styles */
+.animated-top-dock {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  user-select: none;
+  touch-action: pan-y;
+  z-index: 40;
+}
+
+.animated-top-dock__bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 9999px;
+  background: rgba(13, 13, 22, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+:root.light .animated-top-dock__bar {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.animated-top-dock__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.animated-top-dock__item {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #94a3b8;
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+  will-change: width, height, transform;
+  outline: none;
+}
+
+:root.light .animated-top-dock__item {
+  color: #64748b;
+}
+
+.animated-top-dock__item:hover {
+  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+:root.light .animated-top-dock__item:hover {
+  color: #0f172a;
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.animated-top-dock__item[data-active="true"] {
+  color: #ffffff;
+  background: rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.4);
+  box-shadow: 0 0 16px rgba(59, 130, 246, 0.25);
+}
+
+:root.light .animated-top-dock__item[data-active="true"] {
+  color: #1d4ed8;
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.3);
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.15);
+}
+
+.animated-top-dock__item-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 6px;
+  margin-left: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 9999px;
+  background: rgba(59, 130, 246, 0.25);
+  color: #60a5fa;
+}
+
+/* Variant-specific stylings */
+.animated-top-dock--retro .animated-top-dock__bar {
+  border-radius: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+.animated-top-dock--retro .animated-top-dock__item {
+  border-radius: 6px;
+}
+
+.animated-top-dock--glass .animated-top-dock__bar {
+  background: rgba(15, 23, 42, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}

@@ -56,7 +56,43 @@ export function Dashboard({ onNavigate }: { onNavigate: (p: Page) => void }) {
   useEffect(() => { runDemo(); }, []);
   const whRows: WarehouseRow[] = (lastRun?.utilization || []).map((u, i) => ({ name: u.id, utilization: Math.round(u.u * 100), color: COLORS[i % COLORS.length] }));
   return <div className="page-enter dashboard-shell h-full overflow-y-auto bg-transparent p-4 md:p-7">
-    <section className="editorial-hero relative mb-7 min-h-[650px] overflow-hidden border-b border-cyan-300/10 bg-[#08111d] px-5 pb-5 pt-7 md:px-9 md:pt-9"><div className="hero-orbit hero-orbit-one" /><div className="hero-orbit hero-orbit-two" /><div className="scanline" /><div className="relative z-10 max-w-xl"><div className="mb-4 flex items-center gap-2 text-[10px] font-mono uppercase tracking-[.25em] text-cyan-300"><span className="live-dot" />Live network / Bengaluru region</div><h1 className="max-w-2xl text-4xl font-semibold leading-[.98] tracking-[-.06em] text-white md:text-7xl">The network<br /><span className="holographic-text">is thinking.</span></h1><p className="mt-5 max-w-md text-sm leading-6 text-[#9bb0c9]">A live operational view of every decision between demand and delivery.</p><div className="mt-6 flex flex-wrap items-center gap-2"><Badge variant={health?.llm?.startsWith('on:') ? 'success' : 'muted'}><Activity size={11} />{health?.llm || 'Syncing telemetry'}</Badge><Badge variant="info"><Cpu size={11} />Exact solver</Badge><Button variant="primary" size="md" loading={loading} onClick={runDemo}><RefreshCw size={14} />Re-optimize network</Button></div></div><div className="hero-network-wrap absolute bottom-0 left-0 right-0 md:left-[25%] md:top-24"><NetworkPulse rows={whRows} /></div><div className="hero-caption absolute bottom-6 left-6 z-20 hidden items-center gap-4 text-[10px] font-mono uppercase tracking-[.16em] text-[#6f87a3] md:flex"><span><i className="legend-dot legend-cyan" />active flow</span><span><i className="legend-dot legend-blue" />capacity signal</span><span className="text-cyan-300/80">{whRows.length} hubs online</span></div></section>
+    <section className="editorial-hero relative mb-7 overflow-hidden rounded-2xl border border-cyan-300/10 bg-[#08111d] px-6 py-8 md:px-9 md:py-10">
+      <div className="hero-orbit hero-orbit-one" />
+      <div className="hero-orbit hero-orbit-two" />
+      <div className="scanline" />
+      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+        <div className="lg:col-span-5 space-y-6">
+          <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-[.25em] text-cyan-300">
+            <span className="live-dot" />Live network / Bengaluru region
+          </div>
+          <h1 className="text-4xl font-semibold leading-[.98] tracking-[-.06em] text-white md:text-6xl">
+            The network<br /><span className="holographic-text">is thinking.</span>
+          </h1>
+          <p className="text-sm leading-6 text-[#9bb0c9]">
+            A live operational view of every decision between demand and delivery.
+          </p>
+          <div className="flex flex-wrap items-center gap-2 pt-2">
+            <Badge variant={health?.llm?.startsWith('on:') ? 'success' : 'muted'}>
+              <Activity size={11} />{health?.llm || 'Syncing telemetry'}
+            </Badge>
+            <Badge variant="info">
+              <Cpu size={11} />Exact solver
+            </Badge>
+            <Button variant="primary" size="md" loading={loading} onClick={runDemo}>
+              <RefreshCw size={14} />Re-optimize network
+            </Button>
+          </div>
+          <div className="flex items-center gap-4 text-[10px] font-mono uppercase tracking-[.16em] text-[#6f87a3] pt-4 border-t border-cyan-300/10">
+            <span><i className="legend-dot legend-cyan" />active flow</span>
+            <span><i className="legend-dot legend-blue" />capacity signal</span>
+            <span className="text-cyan-300/80">{whRows.length} hubs online</span>
+          </div>
+        </div>
+        <div className="lg:col-span-7">
+          <NetworkPulse rows={whRows} />
+        </div>
+      </div>
+    </section>
     <motion.section
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
