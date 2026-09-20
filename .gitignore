@@ -10,7 +10,8 @@ frontend/node_modules/
 
 # builds
 dist/
-frontend/dist/
+# frontend/dist/ is tracked so Railway always has built assets
+!frontend/dist/
 .vite/
 frontend/.vite/
 

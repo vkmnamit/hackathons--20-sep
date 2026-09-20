@@ -164,27 +164,42 @@ const MIME = {
   '.ttf': 'font/ttf',
   '.webp': 'image/webp'
 };
+const DIST = path.join(ROOT, 'frontend', 'dist');
+// Startup: verify dist directory & assets exist so blank-screen issues are
+// caught immediately in Railway logs instead of silently serving 404s.
+(function checkDist(){
+  const idx = path.join(DIST, 'index.html');
+  const assets = path.join(DIST, 'assets');
+  if (!fs.existsSync(idx)) console.warn('[WARN] frontend/dist/index.html NOT FOUND at', idx);
+  else console.log('[OK] dist/index.html found');
+  if (fs.existsSync(assets)) {
+    const af = fs.readdirSync(assets);
+    console.log('[OK] dist/assets/ contains', af.length, 'file(s):', af.join(', '));
+  } else { console.warn('[WARN] frontend/dist/assets/ NOT FOUND at', assets); }
+})();
 const server = http.createServer(function(req,res){
   const u = url.parse(req.url,true);
   if(req.method==='OPTIONS'){ send(res,200,{}); return; }
   (async function(){
     if(req.method==='GET' && (u.pathname==='/'||u.pathname==='/index.html')){
-      const dist=path.join(ROOT,'frontend','dist','index.html');
+      const dist=path.join(DIST,'index.html');
       const f=fs.existsSync(dist)?dist:path.join(ROOT,'frontend','index.html');
       res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-cache, no-store, must-revalidate','Pragma':'no-cache','Expires':'0'});
       fs.createReadStream(f).pipe(res); return;
     }
-    if(req.method==='GET' && u.pathname.indexOf('/assets/')===0){
-      const f=path.join(ROOT,'frontend','dist',u.pathname.replace(/\.\./g,''));
+    // Serve any static file from frontend/dist/ (assets, sample.csv, etc.)
+    if(req.method==='GET' && !u.pathname.startsWith('/api/')){
+      const safe = u.pathname.replace(/\.\./g,'').replace(/^\/+/,'');
+      const f = path.join(DIST, safe);
       if(fs.existsSync(f)&&fs.statSync(f).isFile()){
         const ext=path.extname(f).toLowerCase();
+        const isAsset = safe.startsWith('assets');
         res.writeHead(200,{
           'Content-Type':MIME[ext]||'application/octet-stream',
-          'Cache-Control':'public, max-age=31536000, immutable'
+          'Cache-Control': isAsset ? 'public, max-age=31536000, immutable' : 'no-cache'
         });
         fs.createReadStream(f).pipe(res); return;
       }
-      send(res,404,{error:'not found'}); return;
     }
     if(req.method==='GET' && u.pathname==='/sample.csv'){
       const f=path.join(ROOT,'data','sample.csv');
@@ -576,10 +591,9 @@ const server = http.createServer(function(req,res){
       send(res,200,fulfill.storagePlan(runWlopt,b)); return;
     }
     if(req.method==='GET' && !u.pathname.startsWith('/api/')){
-      const dist=path.join(ROOT,'frontend','dist','index.html');
-      const f=fs.existsSync(dist)?dist:path.join(ROOT,'frontend','index.html');
+      const f=path.join(DIST,'index.html');
       if(fs.existsSync(f)){
-        res.writeHead(200,{'Content-Type':'text/html','Cache-Control':'no-cache, no-store, must-revalidate','Pragma':'no-cache','Expires':'0'});
+        res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-cache, no-store, must-revalidate','Pragma':'no-cache','Expires':'0'});
         fs.createReadStream(f).pipe(res); return;
       }
     }
