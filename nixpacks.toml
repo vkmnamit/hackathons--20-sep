@@ -3,7 +3,7 @@ nixPkgs = ["nodejs_22"]
 
 [phases.install]
 cmds = [
-  "npm --prefix frontend install --include=dev --include=optional"
+  "npm --prefix frontend install --include=dev"
 ]
 
 [phases.build]
