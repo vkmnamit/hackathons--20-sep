@@ -33,25 +33,25 @@
 - **Rigorous Mathematical Formulation**: Formulates the discrete Capacitated Facility Location Problem (CFLP) as a Mixed-Integer Linear Program (MILP), strictly enforcing capacity bounds ($\sum d_i x_{ij} \le C_j y_j$), single/fractional sourcing constraints, and service radius cutoffs ($d(i, j) \le R_{\max}$).
 - **7 Distinct Optimization Engines**:
   1. **Branch-and-Bound Exact MILP**: Provably global optimum with branch pruning.
-  2. **Simulated Annealing**: Stochastic metaheuristic with Boltzmann acceptance criterion ($P = e^{-\Delta E / T}$) avoiding local minima.
+  2. **Simulated Annealing**: Stochastic metaheuristic with Boltzmann acceptance criterion ($P = \exp(-\Delta E / T)$) avoiding local minima.
   3. **Local Search (Add / Drop / Swap)**: Iterative 1-opt and 2-opt neighborhood descent.
   4. **Demand-Weighted K-Medoids (PAM)**: Exact candidate medoid selection weighted by neighborhood demand.
   5. **Demand-Weighted K-Means (Lloyd's)**: Fast spatial clustering with capacity-feasible greedy assignment.
   6. **Capacitated Greedy**: Iterative best marginal cost allocation.
   7. **Weiszfeld Continuous Geometric Median**: Iterative subgradient algorithm for unconstrained Fermat-Weber continuous hub placement.
 - **Parametric Cost Modeling**:
-  - Landed fuel cost calculation: $\text{Rate/km} = \text{Base} + \frac{\text{Fuel Price (\$ / L)}}{\text{Efficiency (km / L)}}$.
+  - Landed fuel cost calculation: $\text{Rate/km} = \text{Base} + \frac{\text{Fuel Price [USD/L]}}{\text{Efficiency [km/L]}}$.
   - Multi-vehicle fleet profiles (2-Wheelers, Electric Cargo Vans, Diesel Vans, 14ft Heavy Trucks).
-  - Circuity & traffic multipliers ($0.85\times$ Night to $2.00\times$ Monsoon Congestion).
+  - Circuity & traffic multipliers ($0.85\times \text{Night}$ to $2.00\times \text{Monsoon Congestion}$).
   - Continuous cost trade-off curve ($k=1 \dots N$ sweep) finding the global $U$-curve minimum.
 
 ### 2. Real-World Impact
 - **Last-Mile Logistics Cost Reduction**: Benchmarked on high-density urban retail networks (e.g., Bengaluru Basavanagudi & Jayanagar retail corridor), achieving **24% to 38% reductions in total delivery mileage and operational expenditure**.
-- **Environmental & Carbon Footprint Mitigation**: Quantifies CO₂ emission reductions derived from optimized transit distances and EV fleet routing.
+- **Environmental & Carbon Footprint Mitigation**: Quantifies CO2 emission reductions derived from optimized transit distances and EV fleet routing.
 - **Dynamic 365-Day Expansion Planning**: Simulates demand growth over 12 months with seasonal shocks, pinpointing the exact month when network capacity saturates and automatically calculating optimal expansion coordinates.
 
 ### 3. Technical Execution
-- **Ultra-Fast C++17 Computational Engine**: Sub-millisecond execution time ($< 50\text{ms}$ for $N=500$ nodes), zero garbage collection pauses, and compact memory footprint.
+- **Ultra-Fast C++17 Computational Engine**: Sub-millisecond execution time ($< 50\text{ ms}$ for $N=500$ nodes), zero garbage collection pauses, and compact memory footprint.
 - **Zero-Dependency Backend**: The Node.js server (`backend/server.js`) utilizes built-in runtime modules (`http`, `crypto`, `child_process`, `fs`) with zero npm package overhead.
 - **100% Offline & Resilience Guarantee**: Dual-engine architecture featuring a pure TypeScript/WASM fallback solver in `clientSolver.ts` if the backend is unreachable.
 - **Containerized Railway Deployment**: Pre-configured Nixpacks build pipeline with Vite 6 LTS serving high-concurrency static assets and REST API endpoints simultaneously from a single container.
@@ -102,15 +102,15 @@
 
 ### Capacitated Facility Location Problem (CFLP)
 
-$$\min \quad \sum_{j \in W} f_j y_j + \sum_{i \in N} \sum_{j \in W} c_{ij} x_{ij}$$
-
-$$\text{subject to} \quad \sum_{j \in W} x_{ij} = 1 \quad \forall i \in N$$
-
-$$\sum_{i \in N} d_i x_{ij} \le C_j y_j \quad \forall j \in W$$
-
-$$x_{ij} \cdot \text{dist}(i, j) \le R_{\max} \quad \forall i \in N, j \in W$$
-
-$$y_j \in \{0, 1\}, \quad x_{ij} \ge 0 \quad \forall i \in N, j \in W$$
+$$
+\begin{aligned}
+\min \quad & \sum_{j \in W} f_j y_j + \sum_{i \in N} \sum_{j \in W} c_{ij} x_{ij} \\
+\text{subject to} \quad & \sum_{j \in W} x_{ij} = 1 \quad \forall i \in N \\
+& \sum_{i \in N} d_i x_{ij} \le C_j y_j \quad \forall j \in W \\
+& x_{ij} \cdot \text{dist}(i, j) \le R_{\max} \quad \forall i \in N, j \in W \\
+& y_j \in \{0, 1\}, \quad x_{ij} \ge 0 \quad \forall i \in N, j \in W
+\end{aligned}
+$$
 
 Where:
 - $N$: Set of demand neighborhoods with demand volume $d_i$
@@ -122,11 +122,15 @@ Where:
 
 ### Weiszfeld Geometric Median Algorithm
 
-$$\mathbf{x}^{(t+1)} = \frac{\sum_{i=1}^n \frac{w_i \mathbf{a}_i}{\|\mathbf{x}^{(t)} - \mathbf{a}_i\|}}{\sum_{i=1}^n \frac{w_i}{\|\mathbf{x}^{(t)} - \mathbf{a}_i\|}}$$
+$$
+\mathbf{x}^{(t+1)} = \frac{\sum_{i=1}^n \frac{w_i \mathbf{a}_i}{\|\mathbf{x}^{(t)} - \mathbf{a}_i\|}}{\sum_{i=1}^n \frac{w_i}{\|\mathbf{x}^{(t)} - \mathbf{a}_i\|}}
+$$
 
 ### Fuel & Transit Cost Formulation
 
-$$\text{Transit Cost / km} = \text{Base Cost / km} + \left( \frac{\text{Fuel Price (\$ / L)}}{\text{Fuel Efficiency (km / L)}} \right) \times \text{Traffic Multiplier}$$
+$$
+\text{Transit Cost / km} = \text{Base Cost / km} + \left( \frac{\text{Fuel Price [USD / L]}}{\text{Fuel Efficiency [km / L]}} \right) \times \text{Traffic Multiplier}
+$$
 
 ---
 
