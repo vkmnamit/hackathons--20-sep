@@ -6,11 +6,12 @@ import { fmtCurrency, fmt } from '@/lib/utils';
 import {
   Clock, Play, RefreshCw, TrendingUp, TrendingDown,
   MapPin, Loader2, CheckCircle2, AlertTriangle,
-  Zap, Lightbulb
+  Zap, Lightbulb, ChevronDown
 } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import { api, type YearResult } from '@/lib/api';
 import { StepNarration } from '@/components/ui/StepNarration';
+import { GrowthStory } from '@/components/ui/GrowthStory';
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, Legend,
   CartesianGrid, ResponsiveContainer
@@ -357,7 +358,20 @@ export function Year() {
             </CardHeader>
             <CardBody className="space-y-3">
               {result.narration && result.narration.length ? (
-                <StepNarration lines={result.narration} via={result.narrVia} />
+                <>
+                  {/* structured, sectioned story — 01 growth → 08 payback */}
+                  <GrowthStory lines={result.narration} />
+                  {/* collapsible raw narrator lines for transparency */}
+                  <details className="group rounded-lg border border-[#1e1e2e] bg-[#0d0d16]">
+                    <summary className="flex items-center gap-1.5 px-3 py-2 cursor-pointer text-[10px] font-mono uppercase tracking-widest text-[#5a5a70] hover:text-[#8080a0] select-none">
+                      <ChevronDown size={11} className="group-open:rotate-180 transition-transform" />
+                      Raw narrator output
+                    </summary>
+                    <div className="px-3 pb-3">
+                      <StepNarration lines={result.narration} via={result.narrVia} />
+                    </div>
+                  </details>
+                </>
               ) : (
                 <div className="text-xs text-[#3a3a50]">No narration produced.</div>
               )}
