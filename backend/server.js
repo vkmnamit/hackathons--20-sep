@@ -13,6 +13,23 @@ if (!fs.existsSync(defaultWlopt) && fs.existsSync(defaultWlopt + '.exe')) {
 const WLOPT = process.env.WLOPT || defaultWlopt;
 const ROOT = path.join(__dirname, '..');
 
+// Ensure the solver binary exists; compile it on the fly if the deploy's build
+// phase skipped the C++ step. Without this, every solver endpoint dies with
+// spawnSync ENOENT ("Fulfillment plan unavailable" in the UI).
+function ensureWlopt(){
+  if (fs.existsSync(WLOPT)) return;
+  const src = path.join(__dirname, '..', 'cpp', 'src', 'main.cpp');
+  if (!fs.existsSync(src)) return;
+  const inc = path.join(__dirname, '..', 'cpp', 'include');
+  const compilers = [process.env.CXX, 'g++', 'c++', 'clang++'].filter(Boolean);
+  for (const cxx of compilers) {
+    const r = spawnSync(cxx, ['-std=c++17','-O2','-I',inc,src,'-o',WLOPT], { stdio:'ignore' });
+    if (r.status === 0) { console.log('[wlopt] compiled solver ->', WLOPT, 'via', cxx); return; }
+  }
+  console.warn('[wlopt] solver binary missing and auto-compile failed — solver endpoints will error');
+}
+ensureWlopt();
+
 function runWlopt(payload) {
   const r = spawnSync(WLOPT, [], {
     input: JSON.stringify(payload), encoding: 'utf8', maxBuffer: 64*1024*1024
