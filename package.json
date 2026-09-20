@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "node scripts/dev.js",
     "start": "node backend/server.js",
-    "build": "npm --prefix frontend run build",
+    "build": "npm --prefix frontend install --include=dev && npm --prefix frontend run build",
     "test": "node tests/run.js && node tests/year_test.js",
     "compile-cpp": "cd cpp && g++ -std=c++17 -O2 -I include src/main.cpp -o wlopt.exe"
   },

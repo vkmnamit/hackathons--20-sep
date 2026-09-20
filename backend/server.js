@@ -558,6 +558,14 @@ const server = http.createServer(function(req,res){
       if(!b.warehouses){ send(res,400,{error:'warehouses required'}); return; }
       send(res,200,fulfill.storagePlan(runWlopt,b)); return;
     }
+    if(req.method==='GET' && !u.pathname.startsWith('/api/')){
+      const dist=path.join(ROOT,'frontend','dist','index.html');
+      const f=fs.existsSync(dist)?dist:path.join(ROOT,'frontend','index.html');
+      if(fs.existsSync(f)){
+        res.writeHead(200,{'Content-Type':'text/html','Cache-Control':'no-cache, no-store, must-revalidate','Pragma':'no-cache','Expires':'0'});
+        fs.createReadStream(f).pipe(res); return;
+      }
+    }
     send(res,404,{error:'unknown route '+u.pathname});
   })().catch(function(e){ send(res,500,{error:String(e.message||e).slice(0,2000)}); });
 });
