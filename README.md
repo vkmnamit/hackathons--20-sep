@@ -218,4 +218,4 @@ We gratefully acknowledge the following open-source projects, tools, and librari
 - **Event**: Hack-a-Matics Hackathon 2024
 - **Project**: GRIDPOINT (Wherehouse)
 - **Track**: VECTOR
-- **Authors**: Divyansh Duggad, VKM Namit & Team
+- **Authors**: Divyansh Duggad, Namit Raj, Navya Agrawal & Navya Pandey
