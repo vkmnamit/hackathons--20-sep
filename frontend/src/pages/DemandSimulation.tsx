@@ -12,7 +12,7 @@ import {
   Loader2, Info
 } from 'lucide-react';
 import { useStore } from '@/lib/store';
-import { api, type SimBody } from '@/lib/api';
+import { api, type SimBody, type SimResult } from '@/lib/api';
 import { StepNarration } from '@/components/ui/StepNarration';
 
 export function DemandSimulation() {
@@ -23,7 +23,7 @@ export function DemandSimulation() {
   const [distType, setDistType] = useState<'normal' | 'lognormal' | 'uniform' | 'poisson'>('normal');
   const [running, setRunning] = useState(false);
   const [ran, setRan] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<SimResult | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   const run = useCallback(async () => {
@@ -56,10 +56,10 @@ export function DemandSimulation() {
   );
 
   const distData = result?.distribution?.length
-    ? result.distribution.map((d: any, i: number) => ({
+    ? (result.distribution ?? []).map((d, i) => ({
         cost: d.cost,
         probability: d.density,
-        cumPct: i / result.distribution.length * 100
+        cumPct: i / (result.distribution?.length || 1) * 100
       }))
     : [];
 
@@ -244,7 +244,7 @@ export function DemandSimulation() {
             <Card>
               <CardHeader><span className="text-sm font-medium text-white">Warehouse Demand &amp; Load (+{result.growthPct ?? growth}% expected demand)</span></CardHeader>
               <CardBody className="space-y-3">
-                {(result.expectedNetwork.warehouseLoads || []).map(w => (
+                {(result.expectedNetwork.warehouseLoads || []).map((w: any) => (
                   <div key={w.id} className="flex items-center gap-3">
                     <div className="w-28 text-xs text-[#5a5a70] truncate">{w.name}</div>
                     <div className="flex-1 h-6 bg-[#0d0d16] rounded overflow-hidden flex">

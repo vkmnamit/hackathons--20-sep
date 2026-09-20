@@ -12,6 +12,8 @@ import {
 import { useStore } from '@/lib/store';
 import { api, type Params, type OptResult, type Point, type Candidate, type ExpansionResult } from '@/lib/api';
 import { StepNarration } from '@/components/ui/StepNarration';
+import { ProposedSiteMap } from '@/components/ui/ProposedSiteMap';
+import { gridToLatLng } from '@/lib/geo';
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip,
   Legend, CartesianGrid, ResponsiveContainer, ReferenceLine
@@ -96,6 +98,12 @@ export function OptimizationWorkspace() {
   const [result, setResult] = useState<OptResult | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
+  // AI plan review — LLM narration of the solved network (template fallback,
+  // fetched in parallel so the numeric plan renders instantly).
+  const [aiSummary, setAiSummary] = useState<string[]>([]);
+  const [aiVia, setAiVia] = useState<string>('');
+  const [aiLoading, setAiLoading] = useState(false);
+
   // Sweep and Median results
   const [sweepData, setSweepData] = useState<any[]>([]);
   const [sweepLoading, setSweepLoading] = useState(false);
@@ -168,6 +176,19 @@ export function OptimizationWorkspace() {
 
       setResult(out);
       setRan(true);
+      // AI plan review — non-blocking: the plan is already on screen, the LLM
+      // narrative lands when it arrives (template fallback if unavailable).
+      setAiSummary([]); setAiVia(''); setAiLoading(true);
+      api.insights({
+        solution: out, candidates: wh,
+        params: { algorithm: algo, distanceMetric: dist, maxServiceRadius: radius,
+          deliveryCostPerKm: effectiveCostPerKm, capacity, fixedCost,
+          minWarehouses: minW, maxWarehouses: maxW },
+        savingsPct: out.savingsPct, nbCount: scaledNb.length,
+      })
+        .then(r => { setAiSummary(r.summary || []); setAiVia(r.narrVia || 'template'); })
+        .catch(() => {})
+        .finally(() => setAiLoading(false));
     } catch (e: any) {
       setErr(e.message || 'Optimization solver failed');
     } finally {
@@ -221,6 +242,7 @@ export function OptimizationWorkspace() {
   // Expansion advisor state
   const [expGrowth, setExpGrowth] = useState(30);
   const [expThr, setExpThr] = useState(85);
+  const [expMaxNew, setExpMaxNew] = useState(2);
   const [expRunning, setExpRunning] = useState(false);
   const [expRan, setExpRan] = useState(false);
   const [expRes, setExpRes] = useState<ExpansionResult | null>(null);
@@ -241,13 +263,14 @@ export function OptimizationWorkspace() {
           roadFactor: (dist === 'road' ? 1.35 : 1.0) * currentTraffic.roadMultiplier,
           capacity, fixedCost, minWarehouses: minW, maxWarehouses: maxW,
         },
-        expansion: { growthPct: expGrowth, utilThreshold: expThr / 100, newFixedCost: fixedCost },
+        expansion: { growthPct: expGrowth, utilThreshold: expThr / 100, newFixedCost: fixedCost,
+          maxNewWarehouses: expMaxNew },
       });
       setExpRes(out); setExpRan(true);
     } catch (e: any) {
       setErr(e.message || 'Expansion analysis failed');
     } finally { setExpRunning(false); }
-  }, [loaded, scaledNb, wh, algo, dist, radius, effectiveCostPerKm, currentTraffic, capacity, fixedCost, minW, maxW, expGrowth, expThr]);
+  }, [loaded, scaledNb, wh, algo, dist, radius, effectiveCostPerKm, currentTraffic, capacity, fixedCost, minW, maxW, expGrowth, expThr, expMaxNew]);
 
   const whList = result?.utilization?.map(u => {
     const w = wh.find(x => x.id === u.id);
@@ -723,6 +746,30 @@ export function OptimizationWorkspace() {
                     </CardBody>
                   </Card>
                 )}
+                {/* AI Plan Review — LLM narrative of the solved network */}
+                {result && (aiLoading || aiSummary.length > 0) && (
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between w-full gap-2">
+                        <span className="text-xs font-semibold text-white uppercase tracking-wider font-mono flex items-center gap-1.5">
+                          <Sparkles size={13} className="text-violet-400" /> AI Plan Review
+                        </span>
+                        {aiLoading
+                          ? <Badge variant="muted" className="text-[8px]">thinking…</Badge>
+                          : <Badge variant={aiVia?.startsWith('llm') ? 'info' : 'muted'} className="text-[8px]">{aiVia}</Badge>}
+                      </div>
+                    </CardHeader>
+                    <CardBody>
+                      {aiSummary.length ? (
+                        <StepNarration lines={aiSummary} via={aiVia} />
+                      ) : (
+                        <div className="text-[11px] text-[#4a4a60] flex items-center gap-1.5">
+                          <Loader2 size={12} className="animate-spin" /> Reading the solved network…
+                        </div>
+                      )}
+                    </CardBody>
+                  </Card>
+                )}
               </div>
             </div>
           )}
@@ -935,6 +982,18 @@ export function OptimizationWorkspace() {
                         onChange={e => setExpThr(+e.target.value)}
                         className="w-full h-1 accent-blue-500 cursor-pointer" />
                     </div>
+                    <div>
+                      <div className="flex justify-between text-xs text-[#5a5a70] mb-1">
+                        <span>New sites allowed</span>
+                        <span className="font-mono text-white">{expMaxNew}</span>
+                      </div>
+                      <input type="range" min={1} max={4} step={1} value={expMaxNew}
+                        onChange={e => setExpMaxNew(+e.target.value)}
+                        className="w-full h-1 accent-violet-500 cursor-pointer" />
+                      <div className="text-[10px] text-[#4a4a60] mt-1">
+                        Iteratively proposes up to {expMaxNew} greenfield hub{expMaxNew > 1 ? 's' : ''} if one is not enough
+                      </div>
+                    </div>
                     <Button variant="primary" size="sm" className="w-full" loading={expRunning} onClick={runExpansion}>
                       {expRunning ? <><Loader2 size={13} className="animate-spin" /> Analyzing…</> : <><TrendingUp size={13} /> Recommend Expansion Plan</>}
                     </Button>
@@ -1032,6 +1091,56 @@ export function OptimizationWorkspace() {
                     </CardBody>
                   </Card>
                 )}
+
+                {/* Exact greenfield locations on a real map (lat/lng) */}
+                {expRes && (expRes.proposals?.length || expRes.proposal) && (
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between w-full gap-2 flex-wrap">
+                        <span className="text-sm font-medium text-white flex items-center gap-2">
+                          <MapPin size={14} className="text-violet-400" />
+                          Where to open — exact coordinates
+                        </span>
+                        <Badge variant="info" className="text-[8px]">Weiszfeld median · computed from your data</Badge>
+                      </div>
+                    </CardHeader>
+                    <CardBody className="space-y-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {(expRes.proposals?.length ? expRes.proposals : [expRes.proposal!]).map(p => {
+                          const [plat, plng] = [p.lat ?? gridToLatLng(p, scaledNb)[0], p.lng ?? gridToLatLng(p, scaledNb)[1]];
+                          return (
+                            <div key={p.id} className="p-3 rounded-lg bg-violet-500/5 border border-violet-500/20">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-semibold text-violet-300 flex items-center gap-1.5">
+                                  <MapPin size={12} />{p.name || p.id}
+                                </span>
+                                <span className="text-[10px] font-mono text-violet-300">cap {p.capacity}</span>
+                              </div>
+                              <div className="text-[11px] font-mono text-white mt-1.5">
+                                {plat.toFixed(4)}°N, {plng.toFixed(4)}°E
+                              </div>
+                              <div className="text-[10px] font-mono text-[#8080a0] mt-0.5">
+                                grid ({p.x.toFixed(2)}, {p.y.toFixed(2)}) · covers {p.catchment ?? '—'} stressed areas
+                              </div>
+                              <div className="text-[10px] text-[#5a5a70] mt-1">{p.note}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <ProposedSiteMap
+                        nb={scaledNb}
+                        wh={wh}
+                        openIds={expRes.final.openWarehouses}
+                        proposals={(expRes.proposals?.length ? expRes.proposals : [expRes.proposal!]) as any}
+                        height={380}
+                      />
+                      <div className="text-[10px] text-[#4a4a60]">
+                        Blue = demand areas · green = hubs kept/expanded in the plan · violet diamond = new warehouse.
+                        Pan/zoom the real map to walk the exact spot; click a marker for its lat/lng.
+                      </div>
+                    </CardBody>
+                  </Card>
+                )}
                 {!expRan && !expRunning && (
                   <div className="text-center py-10 text-[#6b6b80]">
                     <TrendingUp size={26} className="mx-auto text-[#2a2a3a] mb-2" />
@@ -1068,7 +1177,7 @@ function WloMapSVG({
   const allProposals = expansion
     ? (expansion.proposals && expansion.proposals.length ? expansion.proposals : (expansion.proposal ? [expansion.proposal] : []))
     : [];
-  allProposals.forEach(p => { xs.push(p.x); ys.push(p.y); });
+  allProposals.forEach((p: any) => { xs.push(p.x); ys.push(p.y); });
 
   const minX = xs.length ? Math.min(...xs) - 0.005 : 12.9;
   const maxX = xs.length ? Math.max(...xs) + 0.005 : 13.0;
@@ -1281,7 +1390,7 @@ function WloMapSVG({
             );
           })}
           {/* violet: proposed new warehouses + their catchment lines */}
-          {allProposals.map(p => (
+          {allProposals.map((p: any) => (
             <g key={'proposal-' + p.id}>
               {Object.entries(finalAsg).filter(([, wid]) => wid === p.id).map(([nid]) => {
                 const n = neighborhoods.find(x => x.id === nid);

@@ -34,8 +34,10 @@ export const api = {
     post<{ sweep: { k: number; deliveryCost: number; fixedCost: number; infraCost: number; totalCost: number; openWarehouses: string[]; unserved: number; algorithmUsed: string; error?: string }[]; note: string }>('/api/sweep', body),
   compare: (body: CompareBody) => post<CompareResult>('/api/compare', body),
   simulate: (body: SimBody) => post<SimResult>('/api/simulate', body),
-  expansion: (body: { neighborhoods: Point[]; candidates: Candidate[]; params?: Params; expansion?: { growthPct?: number; utilThreshold?: number; newFixedCost?: number; buffer?: number } }) =>
+  expansion: (body: { neighborhoods: Point[]; candidates: Candidate[]; params?: Params; expansion?: { growthPct?: number; utilThreshold?: number; newFixedCost?: number; buffer?: number; maxNewWarehouses?: number } }) =>
     post<ExpansionResult>('/api/expansion', body),
+  insights: (body: { solution: OptResult; candidates: Candidate[]; params?: Params; savingsPct?: number; nbCount?: number }) =>
+    post<AiInsights>('/api/optimize/insights', body),
   sensitivity: (body: SensBody) => post<SensResult>('/api/sensitivity', body),
   median: (body: MedBody) => post<MedResult>('/api/median', body),
   explain: (body: OptBody) => post<OptResult & { explanation?: string[] }>('/api/explain', body),
@@ -49,12 +51,11 @@ export const api = {
   forecast: (body: { history: Record<string, number[]>; horizon?: number }) =>
     post<{ forecasts: Record<string, { movingAvg: number; trend: number; forecast: number[] }> }>('/api/forecast', body),
   // ---- operational fulfillment layer ----
-  fulfillDemo: (opts?: { seed?: number; orders?: number }) => {
-    const q: string[] = [];
-    if (opts?.seed != null) q.push('seed=' + opts.seed);
-    if (opts?.orders != null) q.push('orders=' + opts.orders);
-    return get<FulfillDemo>('/api/fulfill/demo' + (q.length ? '?' + q.join('&') : ''));
-  },
+  fulfillDemo: (opts?: { seed?: number; orders?: number; neighborhoods?: Point[]; warehouses?: Candidate[] }) =>
+    post<FulfillDemo>('/api/fulfill/demo', {
+      seed: opts?.seed, orders: opts?.orders,
+      neighborhoods: opts?.neighborhoods, warehouses: opts?.warehouses,
+    }),
   fulfill: (body: FulfillBody) => post<FulfillPlan>('/api/fulfill', body),
   inventory: (body: InventoryBody) => post<InventoryResult>('/api/inventory', body),
   rebalance: (body: RebalanceBody) => post<RebalanceResult>('/api/rebalance', body),
@@ -119,7 +120,9 @@ export interface OptResult {
   loads?: { id: string; load: number }[];
   utilization?: { id: string; u: number }[];
   savingsPct?: number;
-  baselineSingle?: { total: number; open: string[] };
+  infraCost?: number;
+  grandTotal?: number;
+  baselineSingle?: { total?: number; open: string[]; cost?: number; savingsPct?: number };
   explanation?: string[];
 }
 
@@ -148,6 +151,8 @@ export interface SimResult {
   narrVia?: string;
 }
 
+export interface AiInsights { summary: string[]; narrVia: string; }
+
 export interface SensBody { neighborhoods: Point[]; candidates: Candidate[]; params?: Params; }
 
 // ---- Expansion advisor (demand-growth what-if on the optimization page) ----
@@ -156,7 +161,7 @@ export interface ExpansionAction {
   capacityFrom: number; capacityTo: number; addUnits: number;
 }
 export interface ExpansionProposal {
-  id: string; name?: string; x: number; y: number;
+  id: string; name?: string; x: number; y: number; lat?: number; lng?: number;
   capacity: number; fixedCost: number; catchment?: number; note?: string;
 }
 export interface ExpansionResult {
@@ -190,6 +195,10 @@ export interface MedResult {
   centroidCost: number;
   median: { x: number; y: number };
   weberCost: number;
+  // /api/median also reports the Weiszfeld point directly plus the nearest
+  // candidate hub, which the Optimization page surfaces.
+  x: number; y: number;
+  nearestWarehouse: string; distanceToNearest: number;
 }
 
 export interface YearBody {
@@ -359,6 +368,7 @@ export interface FulfillDemo {
   demand: DemandMap;
   params: FulfillParamsIn;
   note: string;
+  source?: 'dataset' | 'demo';
   warehouseVia?: string;
 }
 

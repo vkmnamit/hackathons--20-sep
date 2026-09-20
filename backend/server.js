@@ -286,6 +286,23 @@ const server = http.createServer(function(req,res){
       }
       send(res,200,out); return;
     }
+    if(req.method==='POST' && u.pathname==='/api/optimize/insights'){
+      // LLM "AI Plan Review" for an already-computed optimization result. The
+      // Optimization page fires this in parallel with /api/optimize so the plan
+      // renders instantly and the AI card fills in when the model answers
+      // (template fallback guarantees the card is never empty).
+      const b=JSON.parse(await readBody(req)||'{}');
+      const sol=b.solution||b.result||b.sol;
+      if(!sol){ send(res,400,{error:'solution required'}); return; }
+      expansion.narrateOptimize({sol:sol, candidates:b.candidates||[],
+        params:b.params||{}, savingsPct:b.savingsPct, nbCount:b.nbCount},
+        function(err,out){
+          send(res,200,{
+            summary:(out&&out.text)?out.text.split(/\n+/).filter(function(l){return l.trim();}):[],
+            narrVia:(out&&out.via)||'template'});
+        });
+      return;
+    }
     if(req.method==='POST' && u.pathname==='/api/year'){
 
       // 365-day growth lab: monthly re-optimize, pressure, new-wh proposal,
@@ -438,28 +455,36 @@ const server = http.createServer(function(req,res){
         note:'Baseline (moving-average + linear trend). Feed forecast into /api/optimize.'});
       return;
     }
-    if(req.method==='GET' && u.pathname==='/api/fulfill/demo'){
+    if((req.method==='GET'||req.method==='POST') && u.pathname==='/api/fulfill/demo'){
       // Ready-to-run fulfillment scenario: SKUs, sites with stock/vehicles/waves,
       // inbound replenishments, orders with deadlines, and forecast demand.
-      // Warehouses come from the persistent registry (DB/file) so edits stick;
-      // stock/incoming are layered on top from the demo grid.
-      const d=fulfill.demoFulfill({seed:u.query.seed!=null?+u.query.seed:7,
-        orders:u.query.orders!=null?+u.query.orders:18});
-      try {
-        const reg = await whstore.list(envdb);
-        if (reg && reg.warehouses && reg.warehouses.length) {
-          const stockGrid = { W1:{P1:24,P2:400,P3:6,P4:60}, W2:{P1:12,P2:900,P3:4,P4:25}, W3:{P1:6,P2:120,P3:10,P4:40}, W4:{P1:3,P2:200,P3:1,P4:6} };
-          const incomingGrid = { W1:[{productId:'P1',qty:40,etaHr:18}], W3:[{productId:'P3',qty:12,etaHr:30}] };
-          d.warehouses = reg.warehouses.map(function (w) {
-            const fleet = (w.vehicles && w.vehicles.length ? w.vehicles : [{ id: w.id + '-V1', capacityUnits: 20, speedKmH: 30, maxStops: 8 }]);
-            return Object.assign({}, w, {
-              stock: Object.assign({}, stockGrid[w.id] || { P1: 10, P2: 200, P3: 5, P4: 20 }),
-              incoming: (incomingGrid[w.id] || []).slice(), reserved: {}, vehicles: fleet,
+      // POST additionally accepts {neighborhoods, warehouses} so the scenario is
+      // generated from the ACTIVE dataset (and its seed) instead of the fixed
+      // Bengaluru demo. Warehouses otherwise come from the persistent registry
+      // (DB/file) so edits stick; stock/incoming are layered on top.
+      const b = req.method==='POST' ? JSON.parse(await readBody(req)||'{}') : {};
+      const seed = b.seed!=null ? +b.seed : (u.query.seed!=null ? +u.query.seed : 7);
+      const ordersN = b.orders!=null ? +b.orders : (u.query.orders!=null ? +u.query.orders : 18);
+      const nbIn = Array.isArray(b.neighborhoods) ? b.neighborhoods : null;
+      const whIn = Array.isArray(b.warehouses) ? b.warehouses : null;
+      const d=fulfill.demoFulfill({seed:seed, orders:ordersN, neighborhoods:nbIn, warehouses:whIn});
+      if (!whIn) {
+        try {
+          const reg = await whstore.list(envdb);
+          if (reg && reg.warehouses && reg.warehouses.length) {
+            const stockGrid = { W1:{P1:24,P2:400,P3:6,P4:60}, W2:{P1:12,P2:900,P3:4,P4:25}, W3:{P1:6,P2:120,P3:10,P4:40}, W4:{P1:3,P2:200,P3:1,P4:6} };
+            const incomingGrid = { W1:[{productId:'P1',qty:40,etaHr:18}], W3:[{productId:'P3',qty:12,etaHr:30}] };
+            d.warehouses = reg.warehouses.map(function (w) {
+              const fleet = (w.vehicles && w.vehicles.length ? w.vehicles : [{ id: w.id + '-V1', capacityUnits: 20, speedKmH: 30, maxStops: 8 }]);
+              return Object.assign({}, w, {
+                stock: Object.assign({}, stockGrid[w.id] || { P1: 10, P2: 200, P3: 5, P4: 20 }),
+                incoming: (incomingGrid[w.id] || []).slice(), reserved: {}, vehicles: fleet,
+              });
             });
-          });
-          d.warehouseVia = reg.via;
-        }
-      } catch (e) {}
+            d.warehouseVia = reg.via;
+          }
+        } catch (e) {}
+      }
       send(res,200,Object.assign({storedInventory:INV[invKeyFor(req)]||{},
         inventoryOps:'POST /api/inventory {op:{type:receive|reserve|release|commit|adjust,warehouseId,productId,qty}}'},d));
       return;

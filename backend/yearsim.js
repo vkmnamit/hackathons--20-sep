@@ -2,6 +2,7 @@
 // new-warehouse proposal, reconnection + money/time/labour savings, LLM narrator.
 // Zero npm deps (uses node https for optional OpenAI-compatible LLM call).
 const https = require('https');
+const geo = require('./geo.js');
 
 function rng32(seed){ let a=seed>>>0; return function(){
   a|=0; a=a+0x6D2B79F5|0;
@@ -9,6 +10,12 @@ function rng32(seed){ let a=seed>>>0; return function(){
   return ((t^t>>>14)>>>0)/4294967296; }; }
 
 function euc(ax,ay,bx,by){ return Math.hypot(ax-bx, ay-by); }
+
+// real-world spot for a proposal: shared, data-aware projector (handles both
+// the Bengaluru lat/lng-in-x/y datasets and normalized 0-100 grids).
+function gridToLatLng(x, y, pts){
+  return geo.makeProjector(pts || null).project(x, y);
+}
 
 // Weiszfeld weighted geometric median (in Node, mirrors C++ geo.h)
 function medianOf(pts, iters){
@@ -139,7 +146,9 @@ function runYear(N0, C0, P, Y, runWlopt){
     }
     const cap=Y.newCapacity!=null?Y.newCapacity:
       Math.max(100,Math.round(pts.reduce(function(s,p){return s+p.w;},0)*1.2/100)*100);
-    proposals.push({id:(k===0?'W-NEW':'W-NEW'+(k+1)),x:x,y:y,lat:x,lng:y,
+    const llK=gridToLatLng(x,y,Nend);
+    proposals.push({id:(k===0?'W-NEW':'W-NEW'+(k+1)),x:+x.toFixed(2),y:+y.toFixed(2),
+      lat:llK.lat,lng:llK.lng,
       fixedCost:newFix,capacity:cap,catchment:pts.length,
       note:'computed from data: demand-weighted geometric median of '+pts.length+
         ' stressed areas (round '+(k+1)+')'});
@@ -148,7 +157,8 @@ function runYear(N0, C0, P, Y, runWlopt){
   if(!proposals.length){
     // network already healthy at end-year demand — still surface the median site
     const med=medianOf(Nend.map(function(n){return {x:n.x,y:n.y,w:n.demand};}));
-    proposals.push({id:'W-NEW',x:med.x,y:med.y,lat:med.x,lng:med.y,fixedCost:newFix,
+    const ll=gridToLatLng(med.x,med.y,Nend);
+    proposals.push({id:'W-NEW',x:med.x,y:med.y,lat:ll.lat,lng:ll.lng,fixedCost:newFix,
       capacity:Y.newCapacity!=null?Y.newCapacity:Math.round(totD*0.35),
       catchment:Nend.length,note:'demand-weighted geometric median of day-365 demand (network already healthy)'});
   }
@@ -266,9 +276,10 @@ function llmNarrate(payload, cb, attempt){
   envdb.llmChat([{role:'user',content:'You are a logistics OR engineer. Produce a "Warehouse-Year Plan" for a hackathon demo: exactly 8 lines, each in the strict form "Title: one clear sentence" (no markdown, no numbering, no bold). Cover in this order: Pressure Alert (when strain peaks and how bad), New Hub Location (exact computed coordinates and what they are), Why Here (geometric median of stressed catchment), Reconnect & Rebalance (which routes/warehouses change), Savings Snapshot (cost + km + fuel per year), Labor Relief (driver hours freed), Fast Payback (break-even time), Bottom Line. Use the real numbers from the data. Data: '+JSON.stringify(summary).slice(0,4000)}])
     .then(function(r){
       const txt=(r&&r.ok&&r.text)?r.text:'';
-      if(narrationGood(txt)) cb(null,{text:txt,via:'openrouter:'+(process.env.OPENROUTER_MODEL||process.env.LLM_MODEL||'gpt-4o-mini')});
+      if(narrationGood(txt)) cb(null,{text:txt,via:'llm:'+(r&&r.model? r.model : (process.env.OPENROUTER_MODEL||process.env.LLM_MODEL||'gpt-4o-mini'))});
       else if(attempt<2) setTimeout(function(){ llmNarrate(payload,cb,attempt+1); },1200);
       else if(r&&r.noKey) giveup('template (no LLM key)');
+      else if(r&&r.ok) giveup('template (llm output rejected)');
       else giveup('template (llm unavailable)');
     })
     .catch(function(){

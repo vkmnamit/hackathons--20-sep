@@ -133,22 +133,75 @@ async function listRuns(companyId) {
   if (!r.ok) return null;
   try { return JSON.parse(r.body); } catch { return null; }
 }
-function llmChat(messages, opts) { // OpenRouter (backend .env), fallback to OpenAI layout
-  opts = opts || {};
+// Free OpenRouter routes (e.g. `openrouter/free`) sometimes pick a reasoning
+// model that spends the entire token budget on hidden reasoning and returns
+// `content: null`. These instruction-tuned models are used as fallbacks so the
+// demo always gets usable prose; override with OPENROUTER_FALLBACK_MODELS.
+// NOTE: check https://openrouter.ai/api/v1/models for `:free` slugs — the free
+// catalogue rotates, and dead slugs just waste a round-trip.
+const LLM_FALLBACKS = (process.env.OPENROUTER_FALLBACK_MODELS ||
+  'google/gemma-4-31b-it:free,qwen/qwen3.8-27b:free,z-ai/glm-5.2:free,nvidia/nemotron-3-super-120b-a12b:free,liquid/lfm-2.5-2.6b:free')
+  .split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+
+// Turn a raw OpenRouter/OpenAI response body into a classified failure so the
+// UI can say WHY the AI card fell back to the deterministic template.
+function classifyLlmError(body){
+  const raw = String(body || '');
+  let apiMsg = '';
+  try { const j = JSON.parse(raw); apiMsg = (j.error && (j.error.message || j.error.code)) || ''; } catch (e) {}
+  const low = (raw + ' ' + apiMsg).toLowerCase();
+  if (low.indexOf('rate limit') >= 0 || low.indexOf('429') >= 0)
+    return { reason: 'rate-limit', detail: apiMsg || 'free daily quota exhausted' };
+  if (low.indexOf('no endpoints found') >= 0 || low.indexOf('unavailable for free') >= 0)
+    return { reason: 'model-unavailable', detail: apiMsg || 'model slug not served' };
+  if (low.indexOf('insufficient') >= 0 || low.indexOf('401') >= 0 || low.indexOf('invalid api key') >= 0)
+    return { reason: 'auth', detail: apiMsg || 'bad API key' };
+  return { reason: 'error', detail: apiMsg || raw.slice(0, 160) };
+}
+
+function llmOnce(model, messages, opts, key, host, rpath, useOR) {
   return new Promise(resolve => {
-    const key = process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY || process.env.LLM_API_KEY;
-    if (!key) return resolve({ ok: false, noKey: true });
-    const useOR = !!process.env.OPENROUTER_API_KEY;
-    const host = useOR ? 'openrouter.ai' : new URL(process.env.LLM_BASE || 'https://api.openai.com').hostname;
-    const rpath = useOR ? '/api/v1/chat/completions' : '/v1/chat/completions';
-    const body = JSON.stringify({ model: process.env.OPENROUTER_MODEL || process.env.LLM_MODEL || 'gpt-4o-mini', messages, max_tokens: opts.maxTokens || 500, temperature: opts.temperature != null ? opts.temperature : 0.5 });
+    const body = JSON.stringify({ model: model, messages: messages, max_tokens: opts.maxTokens || 900, temperature: opts.temperature != null ? opts.temperature : 0.5 });
     const req = https.request({ hostname: host, path: rpath, method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key, 'Content-Length': Buffer.byteLength(body), ...(useOR ? { 'HTTP-Referer': 'http://localhost:4000', 'X-Title': 'WLO-hackathon' } : {}) } },
-      res => { let b = ''; res.on('data', c => { b += c; }); res.on('end', () => { try { const j = JSON.parse(b); resolve({ ok: true, text: j.choices?.[0]?.message?.content || '', raw: b.slice(0, 500) }); } catch { resolve({ ok: false, body: b.slice(0, 500) }); } }); });
-    req.on('error', () => resolve({ ok: false, err: true }));
-    req.setTimeout(20000, () => { req.destroy(); resolve({ ok: false, err: true }); });
+      res => { let b = ''; res.on('data', c => { b += c; }); res.on('end', () => { try { const j = JSON.parse(b); const msg = (j.choices && j.choices[0] && j.choices[0].message) || {}; const text = String(msg.content || '').trim(); if (!text) { const cls = classifyLlmError(b); resolve({ ok: false, model: j.model || model, finish: j.choices && j.choices[0] && j.choices[0].finish_reason, reasoning: !!msg.reasoning, reason: cls.reason, detail: cls.detail, raw: b.slice(0, 400) }); return; } resolve({ ok: true, model: j.model || model, text: text, finish: j.choices && j.choices[0] && j.choices[0].finish_reason, reasoning: !!msg.reasoning, raw: b.slice(0, 500) }); } catch { const cls = classifyLlmError(b); resolve({ ok: false, model: model, reason: cls.reason, detail: cls.detail, body: b.slice(0, 400) }); } }); });
+    req.on('error', () => resolve({ ok: false, model: model, err: true, reason: 'network' }));
+    req.setTimeout(opts.timeout || 15000, () => { req.destroy(); resolve({ ok: false, model: model, err: true, timeout: true, reason: 'timeout' }); });
     req.end(body);
   });
+}
+
+async function llmChat(messages, opts) { // OpenRouter (backend .env), fallback to OpenAI layout
+  opts = opts || {};
+  const key = process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY || process.env.LLM_API_KEY;
+  if (!key) return { ok: false, noKey: true, reason: 'no-key', detail: 'no LLM API key configured' };
+  const useOR = !!process.env.OPENROUTER_API_KEY;
+  const host = useOR ? 'openrouter.ai' : new URL(process.env.LLM_BASE || 'https://api.openai.com').hostname;
+  const rpath = useOR ? '/api/v1/chat/completions' : '/v1/chat/completions';
+  const budget = opts.maxTokens || 900;
+  const primary = process.env.OPENROUTER_MODEL || process.env.LLM_MODEL || 'gpt-4o-mini';
+  const attempts = [{ model: primary, maxTokens: budget }];
+  if (useOR) {
+    // same model again with double the budget in case reasoning ate it all
+    attempts.push({ model: primary, maxTokens: budget * 2 });
+    LLM_FALLBACKS.forEach(function (m) { if (m !== primary) attempts.push({ model: m, maxTokens: budget }); });
+  }
+  let last = { ok: false, err: true, reason: 'error' };
+  let sawText = false;
+  const deadline = Date.now() + (opts.deadlineMs || 45000);
+  for (let i = 0; i < attempts.length; i++) {
+    if (Date.now() > deadline) { last = { ok: false, timeout: true, reason: 'timeout', detail: 'LLM deadline exceeded' }; break; }
+    const r = await llmOnce(attempts[i].model, messages, { maxTokens: attempts[i].maxTokens, temperature: opts.temperature }, key, host, rpath, useOR);
+    if (r && r.ok && r.text) { sawText = true; return r; }
+    if (r && r.noKey) return r;
+    // a rate-limit is account-wide: trying more free slugs just burns time
+    if (r && r.reason === 'rate-limit') { last = r; break; }
+    if (r && r.reason === 'auth') { last = r; break; }
+    last = r || last;
+  }
+  if (!last || !last.reason) last = { ok: false, reason: 'empty', detail: 'model returned no text' };
+  last.ok = false; last.empty = !sawText;
+  return last;
 }
 async function listWarehouses() {
   const r = await sb({ path: '/rest/v1/wlo_warehouses?select=*&order=id', method: 'GET' });

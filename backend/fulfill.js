@@ -127,21 +127,43 @@ function demoFulfill(o){
     {id:'P4',name:'Smartphone',unitValue:32000,weightKg:0.4,volumeM3:0.0009,holdingCostPerUnitDay:0.7}
   ];
 
-  const whSpec=[
+  const whSpecSeed=[
     {id:'W1',name:'Whitefield DC',      x:12.9750,y:77.7400, lat:12.9750, lng:77.7400, capacity:900, storageM3:5, throughputPerHr:160, handlingCostPerUnit:1.1, fixedOperatingCost:900, waves:[7,11,15,19]},
     {id:'W2',name:'Peenya Hub',         x:13.0300,y:77.5250, lat:13.0300, lng:77.5250, capacity:700, storageM3:4, throughputPerHr:120, handlingCostPerUnit:1.4, fixedOperatingCost:750, waves:[8,12,16,20]},
     {id:'W3',name:'Hosur Road Depot (Electronic City)', x:12.8452,y:77.6602, lat:12.8452, lng:77.6602, capacity:600, storageM3:3, throughputPerHr: 90, handlingCostPerUnit:1.3, fixedOperatingCost:620, waves:[6,10,14,18]},
     {id:'W4',name:'Hebbal Cross-dock',  x:13.0358,y:77.5970, lat:13.0358, lng:77.5970, capacity:500, storageM3:2, throughputPerHr: 80, handlingCostPerUnit:1.6, fixedOperatingCost:480, waves:[9,13,17]}
   ];
 
+  // warehouse registry (when the caller supplies the active dataset) — sites,
+  // capacity and storage all come from the user's own data, not a fixed list.
+  const whSpec = (Array.isArray(o.warehouses) && o.warehouses.length
+    ? o.warehouses.filter(function (w) { return w && isFinite(w.x) && isFinite(w.y); })
+        .map(function (w, i) {
+          const cap = Math.max(50, Math.round(num(w.capacity, 600)));
+          return { id: w.id || ('W' + (i + 1)), name: w.name || w.id || ('Site ' + (i + 1)),
+            x: w.x, y: w.y, lat: w.lat, lng: w.lng, capacity: cap,
+            storageM3: Math.max(1, Math.round(cap / 150)), throughputPerHr: Math.max(40, Math.round(cap / 6)),
+            handlingCostPerUnit: round(1.1 + (i % 3) * 0.25, 2),
+            fixedOperatingCost: Math.round(num(w.fixedCost, 600) / 2),
+            waves: [[7,11,15,19],[8,12,16,20],[6,10,14,18],[9,13,17]][i % 4] };
+        })
+    : whSpecSeed);
+
   // deliberate stock asymmetry: the east DC is thin on monitors, the depot thin on laptops
-  const stockGrid={
-    W1:{P1:24,P2:400,P3: 6,P4:60},
-    W2:{P1:12,P2:900,P3: 4,P4:25},
-    W3:{P1: 6,P2:120,P3:10,P4:40},
-    W4:{P1: 3,P2:200,P3: 1,P4: 6}
-  };
-  const incomingGrid={ W1:[{productId:'P1',qty:40,etaHr:18}], W3:[{productId:'P3',qty:12,etaHr:30}] };
+  const stockGrid={};
+  whSpec.forEach(function (w, wi) {
+    stockGrid[w.id] = {
+      P1: Math.max(2, Math.round(w.capacity * (wi === 3 ? 0.004 : 0.02))),
+      P2: Math.max(20, Math.round(w.capacity * (wi === 1 ? 1.2 : 0.5))),
+      P3: Math.max(1, Math.round(w.capacity * (wi === 0 ? 0.008 : 0.02))),
+      P4: Math.max(3, Math.round(w.capacity * (wi === 3 ? 0.01 : 0.06))),
+    };
+  });
+  const incomingGrid={};
+  if (whSpec.length > 1) {
+    incomingGrid[whSpec[0].id] = [{productId:'P1',qty:40,etaHr:18}];
+    incomingGrid[whSpec[whSpec.length - 1].id] = [{productId:'P3',qty:12,etaHr:30}];
+  }
 
   const warehouses=whSpec.map(function(w){
     const fleet=[defaultVehicle(w.id,0),defaultVehicle(w.id,1)];
@@ -156,13 +178,19 @@ function demoFulfill(o){
     };
   });
 
-  const hotspots=[
-    {name:'Whitefield',      x:12.9698, y:77.7499, lat:12.9698, lng:77.7499, w:3.0},
-    {name:'Electronic City', x:12.8452, y:77.6602, lat:12.8452, lng:77.6602, w:2.5},
-    {name:'Koramangala',     x:12.9352, y:77.6245, lat:12.9352, lng:77.6245, w:3.0},
-    {name:'Yelahanka',       x:13.1007, y:77.5963, lat:13.1007, lng:77.5963, w:1.5},
-    {name:'Rajajinagar',     x:12.9982, y:77.5530, lat:12.9982, lng:77.5530, w:2.0}
-  ];
+  const hotspots = (Array.isArray(o.neighborhoods) && o.neighborhoods.length
+    ? o.neighborhoods.filter(function (n) { return n && isFinite(n.x) && isFinite(n.y); })
+        .map(function (n) {
+          return { name: n.name || n.id || 'Area', x: n.x, y: n.y, lat: n.lat, lng: n.lng,
+            w: Math.max(0.25, num(n.demand, 1)) };
+        })
+    : [
+        {name:'Whitefield',      x:12.9698, y:77.7499, lat:12.9698, lng:77.7499, w:3.0},
+        {name:'Electronic City', x:12.8452, y:77.6602, lat:12.8452, lng:77.6602, w:2.5},
+        {name:'Koramangala',     x:12.9352, y:77.6245, lat:12.9352, lng:77.6245, w:3.0},
+        {name:'Yelahanka',       x:13.1007, y:77.5963, lat:13.1007, lng:77.5963, w:1.5},
+        {name:'Rajajinagar',     x:12.9982, y:77.5530, lat:12.9982, lng:77.5530, w:2.0}
+      ]);
   const totW=hotspots.reduce(function(a,h){return a+h.w;},0);
   function pickHot(){ let r=rng()*totW; for(const h of hotspots){ r-=h.w; if(r<=0) return h; } return hotspots[0]; }
 
@@ -202,10 +230,16 @@ function demoFulfill(o){
 
   return {products:products,warehouses:warehouses,orders:orders,demand:demand,
     params:Object.assign({},DEFAULT_PARAMS,o.params||{}),
-    note:'Deterministic demo: 4 SKUs (laptop, earbuds, monitor, phone), 4 Bengaluru sites '+
-      '(Whitefield/Peenya/Hosur Road/Hebbal), 5 demand hotspots, mixed express+critical+standard '+
-      'orders, two inbound replenishments, and deliberately uneven stock so allocation, splitting, '+
-      'backorders and rebalancing all have something to chew on.'};
+    source: (Array.isArray(o.neighborhoods)&&o.neighborhoods.length)?'dataset':'demo',
+    note: (Array.isArray(o.neighborhoods)&&o.neighborhoods.length)
+      ? 'Built from YOUR dataset: '+hotspots.length+' demand areas weighted by their demand, '+
+        warehouses.length+' sites with stock derived from their capacity, mixed express+critical+standard '+
+        'orders, inbound replenishments, and deliberately uneven stock so allocation, splitting, '+
+        'backorders and rebalancing all have something to chew on.'
+      : 'Deterministic demo: 4 SKUs (laptop, earbuds, monitor, phone), 4 Bengaluru sites '+
+        '(Whitefield/Peenya/Hosur Road/Hebbal), 5 demand hotspots, mixed express+critical+standard '+
+        'orders, two inbound replenishments, and deliberately uneven stock so allocation, splitting, '+
+        'backorders and rebalancing all have something to chew on.'};
 }
 
 // ------------------------------------------- dispatch (time) scheduling ----
