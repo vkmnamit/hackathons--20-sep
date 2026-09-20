@@ -37,17 +37,17 @@ export function Sidebar({ current, onNavigate, onClose, mobile }: {
 }) {
   return (
     <aside className={cn(
-      'flex flex-col h-full bg-[#0d0d16] border-r border-[#1e1e2e] w-56',
+      'flex flex-col h-full bg-[#0c121b]/95 border-r border-[#223044] w-64 shadow-[18px_0_40px_rgba(0,0,0,0.18)]',
     )}>
-      <div className="flex items-center justify-between px-4 h-14 border-b border-[#1e1e2e] flex-shrink-0">
+      <div className="flex items-center justify-between px-5 h-[4.5rem] border-b border-[#223044] flex-shrink-0">
         <button
           onClick={() => onNavigate('landing')}
           className="flex items-center gap-2 hover:opacity-80 transition-opacity"
         >
-          <div className="w-7 h-7 rounded bg-blue-600 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
             <Warehouse size={14} className="text-white" />
           </div>
-          <span className="text-sm font-semibold text-white tracking-tight">Wherehouse</span>
+           <div className="text-sm font-semibold text-white tracking-tight">Wherehouse<div className="text-[9px] font-mono font-normal text-cyan-400/70 tracking-[0.18em] uppercase">Network intelligence</div></div>
         </button>
         {mobile && (
           <button onClick={onClose} className="text-[#6b6b80] hover:text-white p-1">
@@ -56,7 +56,7 @@ export function Sidebar({ current, onNavigate, onClose, mobile }: {
         )}
       </div>
 
-      <nav className="flex-1 overflow-y-auto py-3 px-2">
+      <nav className="flex-1 overflow-y-auto py-4 px-3">
         {navItems.map((item, i) => {
           const Icon = item.icon;
           const active = current === item.id;
@@ -72,13 +72,13 @@ export function Sidebar({ current, onNavigate, onClose, mobile }: {
               <button
                 onClick={() => onNavigate(item.id)}
                 className={cn(
-                  'w-full flex items-center gap-2.5 px-3 py-2 rounded text-sm transition-all duration-100 group',
+                  'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-150 group mb-0.5',
                   active
-                    ? 'bg-blue-600/10 text-blue-400 border border-blue-500/20'
-                    : 'text-[#6b6b80] hover:text-[#c0c0d0] hover:bg-[#1a1a24]'
+                    ? 'bg-gradient-to-r from-blue-500/15 to-cyan-400/5 text-blue-300 border border-blue-400/25 shadow-inner shadow-blue-500/5'
+                    : 'text-[#76859c] hover:text-[#d8e2ef] hover:bg-[#182130]'
                 )}
               >
-                <Icon size={15} className={cn(active ? 'text-blue-400' : 'text-[#4a4a60] group-hover:text-[#8080a0]')} />
+                 <Icon size={16} className={cn(active ? 'text-cyan-300' : 'text-[#53647c] group-hover:text-[#8fa8c4]')} />
                 <span className="truncate flex-1 text-left">{item.label}</span>
                 {active && <ChevronRight size={12} className="text-blue-500/60" />}
               </button>

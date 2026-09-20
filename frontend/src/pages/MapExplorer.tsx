@@ -248,7 +248,7 @@ export function MapExplorer() {
   };
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="map-explorer-shell page-enter h-full flex flex-col">
       <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e1e2e] bg-[#0d0d16] flex-shrink-0">
         <div>
           <h1 className="text-sm font-semibold text-white flex items-center gap-2">

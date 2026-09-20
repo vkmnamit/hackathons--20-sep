@@ -11,8 +11,6 @@ import {
 import { useStore } from '@/lib/store';
 import { api, type YearResult } from '@/lib/api';
 import { StepNarration } from '@/components/ui/StepNarration';
-import { ProposedSiteMap } from '@/components/ui/ProposedSiteMap';
-import { gridToLatLng } from '@/lib/geo';
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, Legend,
   CartesianGrid, ResponsiveContainer
@@ -93,17 +91,16 @@ export function Year() {
   const fp = result?.firstPressure;
   const prop = result?.proposal;
   const stats = result?.stats;
-  const props = result?.proposals?.length ? result.proposals : (prop ? [prop] : []);
 
   return (
-    <div className="h-full overflow-y-auto bg-[#0a0a0f] p-6 space-y-5">
-      <div className="flex items-center justify-between">
+    <div className="year-shell page-enter h-full overflow-y-auto bg-[#0a0a0f] p-4 md:p-7 space-y-5">
+      <div className="scenario-hero flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded bg-blue-600/20 border border-blue-500/20 flex items-center justify-center">
             <Clock size={15} className="text-blue-400" />
           </div>
           <div>
-            <h1 className="text-lg font-semibold text-white">Expansion Scenario Builder</h1>
+            <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-white">Expansion Scenario Builder</h1>
             <p className="text-xs text-[#8080a0] mt-0.5">Describe what is changing in your business. LogiOpt turns it into an expansion recommendation.</p>
           </div>
         </div>
@@ -123,7 +120,7 @@ export function Year() {
         </div>
       )}
 
-      <section className="rounded-lg border border-[#1e1e2e] bg-[#0d0d14] p-4">
+      <section className="scenario-controls rounded-lg border border-[#1e1e2e] bg-[#0d0d14] p-4">
         <div className="mb-3 flex items-center gap-2">
           <TrendingUp size={14} className="text-blue-400" />
           <h2 className="text-sm font-medium text-white">1. Current network</h2>
@@ -248,11 +245,9 @@ export function Year() {
               <div className="p-3 rounded-lg bg-[#111118] border border-[#1e1e2e]">
                 <div className="text-[10px] font-mono text-[#6b6b80]">WEISZFELD MEDIAN COORD</div>
                 <div className="text-lg font-mono font-bold text-white mt-0.5">
-                  {prop ? `${(prop.lat ?? gridToLatLng(prop, nb)[0]).toFixed(4)}°N` : '—'}
+                  {prop ? `(${prop.x.toFixed(2)}, ${prop.y.toFixed(2)})` : '—'}
                 </div>
-                <div className="text-[10px] text-emerald-400 mt-0.5 font-mono">
-                  {prop ? `${(prop.lng ?? gridToLatLng(prop, nb)[1]).toFixed(4)}°E · grid (${prop.x.toFixed(2)}, ${prop.y.toFixed(2)})` : 'Fermat-Weber optimal center'}
-                </div>
+                <div className="text-[10px] text-emerald-400 mt-0.5">Fermat-Weber optimal center</div>
               </div>
             </div>
           )}
@@ -318,56 +313,6 @@ export function Year() {
             )}
           </div>
 
-          {/* Exact location of every proposed hub on a real map (lat/lng) */}
-          {props.length > 0 && (
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <span className="text-sm font-medium text-white flex items-center gap-2">
-                    <MapPin size={14} className="text-violet-400" />
-                    Where to open — exact coordinates
-                  </span>
-                  <Badge variant="info" className="text-[8px]">computed from your data</Badge>
-                </div>
-              </CardHeader>
-              <CardBody className="space-y-3">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {props.map(p => {
-                    const [plat, plng] = [p.lat ?? gridToLatLng(p, nb)[0], p.lng ?? gridToLatLng(p, nb)[1]];
-                    return (
-                      <div key={p.id} className="p-3 rounded-lg bg-violet-500/5 border border-violet-500/20">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-semibold text-violet-300 flex items-center gap-1.5">
-                            <MapPin size={12} />{p.id}
-                          </span>
-                          <span className="text-[10px] font-mono text-violet-300">cap {p.capacity}</span>
-                        </div>
-                        <div className="text-[11px] font-mono text-white mt-1.5">
-                          {plat.toFixed(4)}°N, {plng.toFixed(4)}°E
-                        </div>
-                        <div className="text-[10px] font-mono text-[#8080a0] mt-0.5">
-                          grid ({p.x.toFixed(2)}, {p.y.toFixed(2)}) · serves {p.catchment ?? '—'} stressed areas
-                        </div>
-                        <div className="text-[10px] text-[#5a5a70] mt-1">{p.note}</div>
-                      </div>
-                    );
-                  })}
-                </div>
-                <ProposedSiteMap
-                  nb={nb}
-                  wh={wh}
-                  openIds={result?.newSolEnd?.openWarehouses || result?.baseSolMonth0?.openWarehouses}
-                  proposals={props}
-                  height={340}
-                />
-                <div className="text-[10px] text-[#4a4a60]">
-                  Blue = demand areas · green = hubs in the year-end plan · violet diamond = proposed new warehouse.
-                  Coordinates are the demand-weighted geometric median (Weiszfeld) of the stressed catchment.
-                </div>
-              </CardBody>
-            </Card>
-          )}
-
           <Card>
             <CardHeader><span className="text-sm font-medium text-white">Warehouse Reconnect: Base vs Year-End</span></CardHeader>
             <CardBody>
@@ -385,9 +330,7 @@ export function Year() {
                   ))}
                   {(result.proposals && result.proposals.length ? result.proposals : (prop ? [prop] : [])).map(p => (
                     <div key={p.id} className="mt-2 p-1.5 rounded bg-emerald-500/5 border border-emerald-500/20">
-                      <span className="text-emerald-400 font-mono">+{p.id}</span> @ ({p.x.toFixed(2)}, {p.y.toFixed(2)})
-                      <span className="text-[#8080a0] font-mono"> · {(p.lat ?? gridToLatLng(p, nb)[0]).toFixed(4)}°N, {(p.lng ?? gridToLatLng(p, nb)[1]).toFixed(4)}°E</span>
-                      <span className="text-[#8080a0]"> · cap {p.capacity}</span>
+                      <span className="text-emerald-400 font-mono">+{p.id}</span> @ ({p.x.toFixed(2)}, {p.y.toFixed(2)}) · cap {p.capacity}
                       <div className="text-[10px] text-[#5a5a70] mt-0.5">{p.note}</div>
                     </div>
                   ))}

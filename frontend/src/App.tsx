@@ -22,24 +22,28 @@ import { useStore } from '@/lib/store';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 function AppPage({ page, navigate }: { page: Page; navigate: (p: Page) => void }) {
-  switch (page) {
-    case 'dashboard':    return <Dashboard onNavigate={navigate} />;
-    case 'workspace':    return <OptimizationWorkspace />;
-    case 'fulfill':      return <Fulfillment />;
-    case 'warehouses':   return <Warehouses />;
-    case 'map':          return <MapExplorer />;
-    case 'demand':       return <DemandSimulation />;
-    case 'algorithms':   return <AlgorithmComparison />;
-    case 'sensitivity':  return <SensitivityAnalysis />;
-    case 'scenarios':    return <ScenarioManager />;
-    case 'import':       return <DataImport />;
-    case 'history':      return <OptimizationHistory />;
-    case 'docs':         return <Documentation />;
-    case 'settings':     return <Settings />;
-    case 'tenants':      return <Tenants />;
-    case 'year':         return <Year />;
-    default:             return <Dashboard onNavigate={navigate} />;
-  }
+  return <div key={page} className="page-enter min-h-full">
+    {(() => {
+      switch (page) {
+        case 'dashboard':    return <Dashboard onNavigate={navigate} />;
+        case 'workspace':    return <OptimizationWorkspace />;
+        case 'fulfill':      return <Fulfillment />;
+        case 'warehouses':   return <Warehouses />;
+        case 'map':          return <MapExplorer />;
+        case 'demand':       return <DemandSimulation />;
+        case 'algorithms':   return <AlgorithmComparison />;
+        case 'sensitivity':  return <SensitivityAnalysis />;
+        case 'scenarios':    return <ScenarioManager />;
+        case 'import':       return <DataImport />;
+        case 'history':      return <OptimizationHistory />;
+        case 'docs':         return <Documentation />;
+        case 'settings':     return <Settings />;
+        case 'tenants':      return <Tenants />;
+        case 'year':         return <Year />;
+        default:             return <Dashboard onNavigate={navigate} />;
+      }
+    })()}
+  </div>;
 }
 
 export default function App() {
@@ -61,7 +65,7 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#0a0a0f]">
+    <div className="flex h-screen overflow-hidden bg-[#080b12]">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
@@ -85,9 +89,9 @@ export default function App() {
       </div>
 
       {/* Main */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 min-h-0">
         <TopNav onMenuOpen={() => setSidebarOpen(true)} currentPage={page} onLogout={() => setPage('landing')} />
-        <main className="flex-1 overflow-hidden">
+        <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
           <ErrorBoundary>
             <AppPage page={page} navigate={navigate} />
           </ErrorBoundary>

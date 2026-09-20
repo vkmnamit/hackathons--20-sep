@@ -76,10 +76,10 @@ export function ScenarioManager() {
   const statusVariant = (s: string) => s === 'completed' ? 'success' : s === 'running' ? 'info' : s === 'error' ? 'danger' : 'muted';
 
   return (
-    <div className="h-full overflow-y-auto bg-[#0a0a0f] p-6 space-y-5">
+    <div className="scenarios-shell page-enter h-full overflow-y-auto bg-[#0a0a0f] p-4 md:p-7 space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-semibold text-white flex items-center gap-2">
+          <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-white flex items-center gap-2">
             <Bookmark size={16} className="text-blue-400" />Scenarios
           </h1>
           <p className="text-xs text-[#4a4a60] mt-0.5">Compare different optimization configurations</p>

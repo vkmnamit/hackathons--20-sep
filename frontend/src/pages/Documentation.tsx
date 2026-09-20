@@ -109,11 +109,11 @@ function ConceptCard({ c }: { c: typeof concepts[0] }) {
 
 export function Documentation() {
   return (
-    <div className="h-full overflow-y-auto bg-[#0a0a0f] p-6 space-y-6">
+    <div className="docs-shell page-enter h-full overflow-y-auto bg-[#0a0a0f] p-4 md:p-7 space-y-6">
       <div className="flex items-center gap-3">
         <BookOpen size={20} className="text-blue-400" />
         <div>
-          <h1 className="text-lg font-semibold text-white">Documentation</h1>
+          <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-white">Documentation</h1>
           <p className="text-xs text-[#4a4a60] mt-0.5">Mathematical concepts and user guide</p>
         </div>
       </div>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Bell, ChevronDown, Menu, CheckCircle2, Zap, Sun, Moon } from 'lucide-react';
+import { Search, Bell, ChevronDown, Menu, Zap, Sun, Moon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Page } from './Sidebar';
 import { useStore } from '@/lib/store';
@@ -32,7 +32,7 @@ export function TopNav({ onMenuOpen, currentPage, onLogout }: {
   };
 
   return (
-    <header className="h-14 border-b border-[#1e1e2e] bg-[#0a0a0f]/80 backdrop-blur flex items-center px-4 gap-3 flex-shrink-0">
+    <header className="h-[4.5rem] border-b border-[#223044] bg-[#0a0f18]/75 backdrop-blur-xl flex items-center px-5 gap-4 flex-shrink-0">
       {/* Mobile menu */}
       <button onClick={onMenuOpen} className="md:hidden text-[#6b6b80] hover:text-white p-1">
         <Menu size={18} />
@@ -40,26 +40,20 @@ export function TopNav({ onMenuOpen, currentPage, onLogout }: {
 
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm">
-        <span className="text-[#3a3a50] font-mono text-xs">WLO v2</span>
+        <span className="text-cyan-400/70 font-mono text-[10px] tracking-widest">WLO / 02</span>
         <span className="text-[#2a2a3a]">/</span>
-        <span className="text-[#c0c0d0]">{pageLabels[currentPage] ?? currentPage}</span>
+        <span className="text-[#e4edf7] font-medium">{pageLabels[currentPage] ?? currentPage}</span>
       </div>
 
       <div className="flex-1" />
 
-      {/* Status pill — neutral, reflects backend health if available */}
-      <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-500/10 border border-green-500/20">
-        <CheckCircle2 size={11} className="text-green-400" />
-        <span className="text-[10px] font-mono font-medium text-green-400">Backend ready</span>
-      </div>
-
       {/* Search */}
       <div className="relative hidden lg:block">
         <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#3a3a50]" />
-        <input
+         <input
           type="text"
           placeholder="Search..."
-          className="w-44 pl-8 pr-3 py-1.5 rounded text-xs bg-[#111118] border border-[#1e1e2e] text-[#a0a0b0] placeholder-[#3a3a50] focus:outline-none focus:border-blue-500/40 transition-colors"
+           className="w-52 pl-8 pr-3 py-2 rounded-lg text-xs bg-[#101620] border border-[#223044] text-[#a0a0b0] placeholder-[#53647c] focus:border-cyan-400/50 focus:bg-[#142030]"
         />
       </div>
 

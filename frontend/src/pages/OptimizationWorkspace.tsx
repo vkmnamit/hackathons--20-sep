@@ -6,14 +6,12 @@ import { fmtCurrency, fmtPct } from '@/lib/utils';
 import {
   Play, X, CheckCircle2, AlertTriangle,
   Loader2, Info, ChevronDown, Truck, Fuel, Clock,
-  TrendingUp, Compass, BarChart3, Layers, SlidersHorizontal,
+  TrendingUp, Compass, BarChart3,
   Maximize2, ArrowRight, ShieldAlert, Sparkles, MapPin
 } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import { api, type Params, type OptResult, type Point, type Candidate, type ExpansionResult } from '@/lib/api';
 import { StepNarration } from '@/components/ui/StepNarration';
-import { ProposedSiteMap } from '@/components/ui/ProposedSiteMap';
-import { gridToLatLng } from '@/lib/geo';
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip,
   Legend, CartesianGrid, ResponsiveContainer, ReferenceLine
@@ -98,12 +96,6 @@ export function OptimizationWorkspace() {
   const [result, setResult] = useState<OptResult | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
-  // AI plan review — LLM narration of the solved network (template fallback,
-  // fetched in parallel so the numeric plan renders instantly).
-  const [aiSummary, setAiSummary] = useState<string[]>([]);
-  const [aiVia, setAiVia] = useState<string>('');
-  const [aiLoading, setAiLoading] = useState(false);
-
   // Sweep and Median results
   const [sweepData, setSweepData] = useState<any[]>([]);
   const [sweepLoading, setSweepLoading] = useState(false);
@@ -176,19 +168,6 @@ export function OptimizationWorkspace() {
 
       setResult(out);
       setRan(true);
-      // AI plan review — non-blocking: the plan is already on screen, the LLM
-      // narrative lands when it arrives (template fallback if unavailable).
-      setAiSummary([]); setAiVia(''); setAiLoading(true);
-      api.insights({
-        solution: out, candidates: wh,
-        params: { algorithm: algo, distanceMetric: dist, maxServiceRadius: radius,
-          deliveryCostPerKm: effectiveCostPerKm, capacity, fixedCost,
-          minWarehouses: minW, maxWarehouses: maxW },
-        savingsPct: out.savingsPct, nbCount: scaledNb.length,
-      })
-        .then(r => { setAiSummary(r.summary || []); setAiVia(r.narrVia || 'template'); })
-        .catch(() => {})
-        .finally(() => setAiLoading(false));
     } catch (e: any) {
       setErr(e.message || 'Optimization solver failed');
     } finally {
@@ -242,7 +221,6 @@ export function OptimizationWorkspace() {
   // Expansion advisor state
   const [expGrowth, setExpGrowth] = useState(30);
   const [expThr, setExpThr] = useState(85);
-  const [expMaxNew, setExpMaxNew] = useState(2);
   const [expRunning, setExpRunning] = useState(false);
   const [expRan, setExpRan] = useState(false);
   const [expRes, setExpRes] = useState<ExpansionResult | null>(null);
@@ -263,14 +241,13 @@ export function OptimizationWorkspace() {
           roadFactor: (dist === 'road' ? 1.35 : 1.0) * currentTraffic.roadMultiplier,
           capacity, fixedCost, minWarehouses: minW, maxWarehouses: maxW,
         },
-        expansion: { growthPct: expGrowth, utilThreshold: expThr / 100, newFixedCost: fixedCost,
-          maxNewWarehouses: expMaxNew },
+        expansion: { growthPct: expGrowth, utilThreshold: expThr / 100, newFixedCost: fixedCost },
       });
       setExpRes(out); setExpRan(true);
     } catch (e: any) {
       setErr(e.message || 'Expansion analysis failed');
     } finally { setExpRunning(false); }
-  }, [loaded, scaledNb, wh, algo, dist, radius, effectiveCostPerKm, currentTraffic, capacity, fixedCost, minW, maxW, expGrowth, expThr, expMaxNew]);
+  }, [loaded, scaledNb, wh, algo, dist, radius, effectiveCostPerKm, currentTraffic, capacity, fixedCost, minW, maxW, expGrowth, expThr]);
 
   const whList = result?.utilization?.map(u => {
     const w = wh.find(x => x.id === u.id);
@@ -278,23 +255,18 @@ export function OptimizationWorkspace() {
   }) || [];
 
   return (
-    <div className="h-full min-h-0 flex flex-col md:flex-row overflow-hidden bg-[#0a0a0f]">
+    <div className="optimization-shell h-full min-h-0 flex flex-col overflow-visible bg-[#0a0a0f]">
       {/* Left Column: Controls & Configuration */}
-      <div className="w-full md:w-96 flex-shrink-0 border-r border-[#1e1e2e] bg-[#0d0d16] flex flex-col h-full overflow-y-auto">
-        <div className="p-4 border-b border-[#1e1e2e]">
+      <div className="optimization-controls w-full flex-shrink-0 border-b border-[#1e1e2e] bg-[#0d0d16] flex flex-col overflow-visible">
+        <div className="optimization-heading px-6 py-5 border-b border-[#1e1e2e]">
           <div className="flex items-center justify-between">
-            <h1 className="text-sm font-semibold text-white flex items-center gap-2">
-              <SlidersHorizontal size={15} className="text-blue-400" />
-              Optimizer Controls
-            </h1>
-            <Badge variant="muted">{wh.length} candidate hubs</Badge>
-          </div>
-          <p className="text-[11px] text-[#6b6b80] mt-1">
-            Capacitated Facility Location with multi-vehicle & traffic routing
-          </p>
+            <div><h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-white">Optimization Workspace</h1><p className="mt-1 text-sm text-[#7f96af]">Design the most efficient warehouse network.</p></div>
+            <Button variant="primary" size="md" loading={running} onClick={run} className="shadow-lg shadow-blue-500/20"><Play size={14} />Run Optimization</Button>
+           </div>
+          <div className="optimization-metrics-row mt-5 grid grid-cols-3 gap-3 max-w-lg"><div><strong>{scaledNb.length}</strong><span>Demand Nodes</span></div><div><strong>{wh.length}</strong><span>Candidate Hubs</span></div><div><strong>{result?.runtimeMs ?? '—'}</strong><span>Solve Time</span></div></div>
         </div>
 
-        <div className="p-4 space-y-4 flex-1">
+        <div className="optimization-controlbar px-6 py-4 space-y-4">
           {/* Algorithm Selector */}
           <div>
             <label className="text-[10px] font-mono uppercase tracking-wider text-[#8080a0] block mb-1">
@@ -369,8 +341,8 @@ export function OptimizationWorkspace() {
             </div>
           </div>
 
-          {/* Fixed Hub Setup Cost & Distance Metric */}
-          <div className="grid grid-cols-2 gap-2">
+          {/* Fixed Hub Setup Cost */}
+          <div>
             <div>
               <label className="text-[10px] font-mono text-[#8080a0] block mb-1">Fixed Cost / Hub ($)</label>
               <input
@@ -381,25 +353,20 @@ export function OptimizationWorkspace() {
                 className="w-full px-2.5 py-1.5 rounded text-xs bg-[#111118] border border-[#1e1e2e] text-white font-mono focus:border-blue-500/50 focus:outline-none"
               />
             </div>
-            <div>
-              <label className="text-[10px] font-mono text-[#8080a0] block mb-1">Distance Metric</label>
-              <div className="relative">
-                <select
-                  value={dist}
-                  onChange={e => setDist(e.target.value)}
-                  className="w-full appearance-none px-2 py-1.5 rounded text-xs bg-[#111118] border border-[#1e1e2e] text-[#e0e0f0] focus:border-blue-500/50 focus:outline-none"
-                >
-                  {DIST_METRICS.map(d => (
-                    <option key={d.key} value={d.key}>
-                      {d.label}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown size={12} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[#4a4a60] pointer-events-none" />
-              </div>
-            </div>
           </div>
 
+          <details className="advanced-controls">
+            <summary>Advanced controls <ChevronDown size={13} /></summary>
+            <div className="advanced-controls-body space-y-4">
+          <div>
+            <label className="text-[10px] font-mono text-[#8080a0] block mb-1">Distance Metric</label>
+            <div className="relative">
+              <select value={dist} onChange={e => setDist(e.target.value)} className="w-full appearance-none px-2 py-1.5 rounded text-xs bg-[#111118] border border-[#1e1e2e] text-[#e0e0f0] focus:border-blue-500/50 focus:outline-none">
+                {DIST_METRICS.map(d => <option key={d.key} value={d.key}>{d.label}</option>)}
+              </select>
+              <ChevronDown size={12} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[#4a4a60] pointer-events-none" />
+            </div>
+          </div>
           {/* Vehicle Fleet Type Picker (Bonus 4) */}
           <div className="pt-2 border-t border-[#1e1e2e]">
             <label className="text-[10px] font-mono uppercase tracking-wider text-blue-400 flex items-center gap-1 mb-1.5">
@@ -496,101 +463,25 @@ export function OptimizationWorkspace() {
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="pt-3 border-t border-[#1e1e2e] space-y-2">
-            <Button
-              variant="primary"
-              size="md"
-              loading={running}
-              onClick={run}
-              className="w-full flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20"
-            >
-              <Play size={14} />
-              {running ? 'Solving MILP Formulation...' : 'Run Optimization'}
-            </Button>
-
-            <div className="grid grid-cols-2 gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                loading={sweepLoading}
-                onClick={runSweep}
-                className="text-[11px] flex items-center justify-center gap-1"
-                title="Sweep k=1..N to find optimal infrastructure vs delivery trade-off curve"
-              >
-                <BarChart3 size={13} />
-                k-Sweep Curve
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={runWeiszfeld}
-                className="text-[11px] flex items-center justify-center gap-1"
-                title="Find continuous demand-weighted geometric median center"
-              >
-                <Compass size={13} />
-                Weiszfeld (k=1)
-              </Button>
             </div>
-          </div>
+          </details>
+
         </div>
       </div>
 
       {/* Main Center & Right Area */}
-      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+      <div className="optimization-workspace flex-1 flex flex-col min-w-0 min-h-0">
         {/* Top View Switcher Tabs */}
-        <div className="h-12 border-b border-[#1e1e2e] bg-[#0d0d16] px-4 flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setActiveTab('map')}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium flex items-center gap-1.5 transition-colors ${
-                activeTab === 'map'
-                  ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30'
-                  : 'text-[#8080a0] hover:text-white hover:bg-[#1a1a24]'
-              }`}
-            >
-              <Layers size={13} /> Map & Network Visualizer
-            </button>
-            <button
-              onClick={() => setActiveTab('baseline')}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium flex items-center gap-1.5 transition-colors ${
-                activeTab === 'baseline'
-                  ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30'
-                  : 'text-[#8080a0] hover:text-white hover:bg-[#1a1a24]'
-              }`}
-            >
-              <CheckCircle2 size={13} /> Baseline vs. Optimized
-            </button>
-            <button
-              onClick={() => setActiveTab('sweep')}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium flex items-center gap-1.5 transition-colors ${
-                activeTab === 'sweep'
-                  ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30'
-                  : 'text-[#8080a0] hover:text-white hover:bg-[#1a1a24]'
-              }`}
-            >
-              <BarChart3 size={13} /> Infra vs Delivery Sweep (k=1..N)
-            </button>
-            <button
-              onClick={() => setActiveTab('median')}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium flex items-center gap-1.5 transition-colors ${
-                activeTab === 'median'
-                  ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30'
-                  : 'text-[#8080a0] hover:text-white hover:bg-[#1a1a24]'
-              }`}
-            >
-              <Compass size={13} /> Weiszfeld Geometric Center
-            </button>
-            <button
-              onClick={() => setActiveTab('expand')}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium flex items-center gap-1.5 transition-colors ${
-                activeTab === 'expand'
-                  ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30'
-                  : 'text-[#8080a0] hover:text-white hover:bg-[#1a1a24]'
-              }`}
-            >
-              <TrendingUp size={13} /> Expansion Advisor
-            </button>
+        <div className="workspace-tabs h-14 border-b border-[#1e1e2e] bg-[#0d0d16] px-4 flex items-center justify-between flex-shrink-0">
+          <div className="optimization-view-switcher flex items-center gap-2">
+            <span className="hidden sm:block text-[10px] font-mono uppercase tracking-wider text-[#617892]">View</span>
+            <select value={activeTab} onChange={e => setActiveTab(e.target.value as typeof activeTab)} className="optimization-view-select">
+              <option value="map">Map & Network Visualizer</option>
+              <option value="baseline">Baseline vs. Optimized</option>
+              <option value="sweep">Infra vs Delivery Sweep</option>
+              <option value="median">Weiszfeld Geometric Center</option>
+              <option value="expand">Expansion Advisor</option>
+            </select>
           </div>
 
           <div className="flex items-center gap-2">
@@ -603,7 +494,7 @@ export function OptimizationWorkspace() {
         </div>
 
         {/* Tab Contents */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="workspace-content flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 space-y-4">
           {err && (
             <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -616,9 +507,9 @@ export function OptimizationWorkspace() {
 
           {/* TAB 1: Map Visualizer */}
           {activeTab === 'map' && (
-            <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 h-[calc(100vh-140px)] min-h-[550px]">
+            <div className="optimization-map-zone grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_290px] gap-4 h-[calc(100vh-140px)] min-h-[550px]">
               {/* SVG Map Canvas */}
-              <div className="xl:col-span-3 rounded-xl border border-[#1e1e2e] bg-[#0d0f1a] relative overflow-hidden flex flex-col">
+              <div className="optimization-map rounded-xl border border-[#1e1e2e] bg-[#0d0f1a] relative overflow-hidden flex flex-col">
                 <div className="absolute top-3 left-3 z-10 flex items-center gap-2">
                   <div className="px-2.5 py-1 rounded-full text-[11px] font-mono bg-[#111118]/90 border border-[#1e1e2e] text-white flex items-center gap-1.5 backdrop-blur shadow-md">
                     <span>{scaledNb.length} Demand Nodes</span>
@@ -665,8 +556,8 @@ export function OptimizationWorkspace() {
               </div>
 
               {/* Right KPI Summary Sidebar */}
-              <div className="xl:col-span-1 space-y-4 flex flex-col justify-between">
-                <Card>
+              <div className="optimization-results space-y-4 flex flex-col justify-between">
+                <Card className="results-panel">
                   <CardHeader><span className="text-xs font-semibold text-white uppercase tracking-wider font-mono">Plan Performance</span></CardHeader>
                   <CardBody className="space-y-3">
                     {result ? (
@@ -743,30 +634,6 @@ export function OptimizationWorkspace() {
                           </li>
                         ))}
                       </ul>
-                    </CardBody>
-                  </Card>
-                )}
-                {/* AI Plan Review — LLM narrative of the solved network */}
-                {result && (aiLoading || aiSummary.length > 0) && (
-                  <Card>
-                    <CardHeader>
-                      <div className="flex items-center justify-between w-full gap-2">
-                        <span className="text-xs font-semibold text-white uppercase tracking-wider font-mono flex items-center gap-1.5">
-                          <Sparkles size={13} className="text-violet-400" /> AI Plan Review
-                        </span>
-                        {aiLoading
-                          ? <Badge variant="muted" className="text-[8px]">thinking…</Badge>
-                          : <Badge variant={aiVia?.startsWith('llm') ? 'info' : 'muted'} className="text-[8px]">{aiVia}</Badge>}
-                      </div>
-                    </CardHeader>
-                    <CardBody>
-                      {aiSummary.length ? (
-                        <StepNarration lines={aiSummary} via={aiVia} />
-                      ) : (
-                        <div className="text-[11px] text-[#4a4a60] flex items-center gap-1.5">
-                          <Loader2 size={12} className="animate-spin" /> Reading the solved network…
-                        </div>
-                      )}
                     </CardBody>
                   </Card>
                 )}
@@ -982,18 +849,6 @@ export function OptimizationWorkspace() {
                         onChange={e => setExpThr(+e.target.value)}
                         className="w-full h-1 accent-blue-500 cursor-pointer" />
                     </div>
-                    <div>
-                      <div className="flex justify-between text-xs text-[#5a5a70] mb-1">
-                        <span>New sites allowed</span>
-                        <span className="font-mono text-white">{expMaxNew}</span>
-                      </div>
-                      <input type="range" min={1} max={4} step={1} value={expMaxNew}
-                        onChange={e => setExpMaxNew(+e.target.value)}
-                        className="w-full h-1 accent-violet-500 cursor-pointer" />
-                      <div className="text-[10px] text-[#4a4a60] mt-1">
-                        Iteratively proposes up to {expMaxNew} greenfield hub{expMaxNew > 1 ? 's' : ''} if one is not enough
-                      </div>
-                    </div>
                     <Button variant="primary" size="sm" className="w-full" loading={expRunning} onClick={runExpansion}>
                       {expRunning ? <><Loader2 size={13} className="animate-spin" /> Analyzing…</> : <><TrendingUp size={13} /> Recommend Expansion Plan</>}
                     </Button>
@@ -1091,56 +946,6 @@ export function OptimizationWorkspace() {
                     </CardBody>
                   </Card>
                 )}
-
-                {/* Exact greenfield locations on a real map (lat/lng) */}
-                {expRes && (expRes.proposals?.length || expRes.proposal) && (
-                  <Card>
-                    <CardHeader>
-                      <div className="flex items-center justify-between w-full gap-2 flex-wrap">
-                        <span className="text-sm font-medium text-white flex items-center gap-2">
-                          <MapPin size={14} className="text-violet-400" />
-                          Where to open — exact coordinates
-                        </span>
-                        <Badge variant="info" className="text-[8px]">Weiszfeld median · computed from your data</Badge>
-                      </div>
-                    </CardHeader>
-                    <CardBody className="space-y-3">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {(expRes.proposals?.length ? expRes.proposals : [expRes.proposal!]).map(p => {
-                          const [plat, plng] = [p.lat ?? gridToLatLng(p, scaledNb)[0], p.lng ?? gridToLatLng(p, scaledNb)[1]];
-                          return (
-                            <div key={p.id} className="p-3 rounded-lg bg-violet-500/5 border border-violet-500/20">
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs font-semibold text-violet-300 flex items-center gap-1.5">
-                                  <MapPin size={12} />{p.name || p.id}
-                                </span>
-                                <span className="text-[10px] font-mono text-violet-300">cap {p.capacity}</span>
-                              </div>
-                              <div className="text-[11px] font-mono text-white mt-1.5">
-                                {plat.toFixed(4)}°N, {plng.toFixed(4)}°E
-                              </div>
-                              <div className="text-[10px] font-mono text-[#8080a0] mt-0.5">
-                                grid ({p.x.toFixed(2)}, {p.y.toFixed(2)}) · covers {p.catchment ?? '—'} stressed areas
-                              </div>
-                              <div className="text-[10px] text-[#5a5a70] mt-1">{p.note}</div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      <ProposedSiteMap
-                        nb={scaledNb}
-                        wh={wh}
-                        openIds={expRes.final.openWarehouses}
-                        proposals={(expRes.proposals?.length ? expRes.proposals : [expRes.proposal!]) as any}
-                        height={380}
-                      />
-                      <div className="text-[10px] text-[#4a4a60]">
-                        Blue = demand areas · green = hubs kept/expanded in the plan · violet diamond = new warehouse.
-                        Pan/zoom the real map to walk the exact spot; click a marker for its lat/lng.
-                      </div>
-                    </CardBody>
-                  </Card>
-                )}
                 {!expRan && !expRunning && (
                   <div className="text-center py-10 text-[#6b6b80]">
                     <TrendingUp size={26} className="mx-auto text-[#2a2a3a] mb-2" />
@@ -1151,6 +956,11 @@ export function OptimizationWorkspace() {
             </div>
           )}
         </div>
+      </div>
+      <div className="optimization-tools-row flex items-center justify-end gap-2 px-6 py-2 border-t border-[#1e1e2e] bg-[#0b1420]">
+        <span className="mr-2 text-[10px] font-mono uppercase tracking-wider text-[#617892]">Secondary tools</span>
+        <Button variant="outline" size="sm" loading={sweepLoading} onClick={runSweep} className="text-[11px] flex items-center gap-1" title="Sweep k=1..N to find optimal infrastructure vs delivery trade-off curve"><BarChart3 size={13} />k-Sweep Curve</Button>
+        <Button variant="outline" size="sm" onClick={runWeiszfeld} className="text-[11px] flex items-center gap-1" title="Find continuous demand-weighted geometric median center"><Compass size={13} />Weiszfeld (k=1)</Button>
       </div>
     </div>
   );
@@ -1177,7 +987,7 @@ function WloMapSVG({
   const allProposals = expansion
     ? (expansion.proposals && expansion.proposals.length ? expansion.proposals : (expansion.proposal ? [expansion.proposal] : []))
     : [];
-  allProposals.forEach((p: any) => { xs.push(p.x); ys.push(p.y); });
+  allProposals.forEach(p => { xs.push(p.x); ys.push(p.y); });
 
   const minX = xs.length ? Math.min(...xs) - 0.005 : 12.9;
   const maxX = xs.length ? Math.max(...xs) + 0.005 : 13.0;
@@ -1390,7 +1200,7 @@ function WloMapSVG({
             );
           })}
           {/* violet: proposed new warehouses + their catchment lines */}
-          {allProposals.map((p: any) => (
+          {allProposals.map(p => (
             <g key={'proposal-' + p.id}>
               {Object.entries(finalAsg).filter(([, wid]) => wid === p.id).map(([nid]) => {
                 const n = neighborhoods.find(x => x.id === nid);

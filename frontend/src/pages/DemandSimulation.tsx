@@ -12,7 +12,7 @@ import {
   Loader2, Info
 } from 'lucide-react';
 import { useStore } from '@/lib/store';
-import { api, type SimBody, type SimResult } from '@/lib/api';
+import { api, type SimBody } from '@/lib/api';
 import { StepNarration } from '@/components/ui/StepNarration';
 
 export function DemandSimulation() {
@@ -23,7 +23,7 @@ export function DemandSimulation() {
   const [distType, setDistType] = useState<'normal' | 'lognormal' | 'uniform' | 'poisson'>('normal');
   const [running, setRunning] = useState(false);
   const [ran, setRan] = useState(false);
-  const [result, setResult] = useState<SimResult | null>(null);
+  const [result, setResult] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
 
   const run = useCallback(async () => {
@@ -56,26 +56,26 @@ export function DemandSimulation() {
   );
 
   const distData = result?.distribution?.length
-    ? (result.distribution ?? []).map((d, i) => ({
+    ? result.distribution.map((d: any, i: number) => ({
         cost: d.cost,
         probability: d.density,
-        cumPct: i / (result.distribution?.length || 1) * 100
+        cumPct: i / result.distribution.length * 100
       }))
     : [];
 
   return (
-    <div className="h-full overflow-y-auto bg-[#0a0a0f] p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="demand-shell page-enter h-full overflow-y-auto bg-[#0a0a0f] p-4 md:p-7 space-y-6">
+      <div className="demand-hero flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-semibold text-white">Demand Simulation</h1>
+          <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-white">Demand Intelligence</h1>
           <p className="text-xs text-[#4a4a60] mt-0.5">Monte Carlo · {samples} scenarios · {distType} · +{growth}% growth · {cv}% variability</p>
         </div>
         <Badge variant={ran ? 'success' : 'muted'}>{ran ? 'Completed' : 'Not run'}</Badge>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className="demand-workspace grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Controls */}
-        <Card className="lg:col-span-1">
+        <Card className="simulation-controls lg:col-span-1">
           <CardHeader><span className="text-sm font-medium text-white">Simulation Controls</span></CardHeader>
           <CardBody className="space-y-4">
             <div>
@@ -161,7 +161,7 @@ export function DemandSimulation() {
         </Card>
 
         {/* Charts */}
-        <div className="lg:col-span-3 space-y-6">
+        <div className="simulation-results lg:col-span-3 space-y-6">
           {/* Demand forecast */}
           <Card>
             <CardHeader><span className="text-sm font-medium text-white">Cost Distribution ({fmt(samples)} simulations)</span></CardHeader>
@@ -244,7 +244,7 @@ export function DemandSimulation() {
             <Card>
               <CardHeader><span className="text-sm font-medium text-white">Warehouse Demand &amp; Load (+{result.growthPct ?? growth}% expected demand)</span></CardHeader>
               <CardBody className="space-y-3">
-                {(result.expectedNetwork.warehouseLoads || []).map((w: any) => (
+                {(result.expectedNetwork.warehouseLoads || []).map(w => (
                   <div key={w.id} className="flex items-center gap-3">
                     <div className="w-28 text-xs text-[#5a5a70] truncate">{w.name}</div>
                     <div className="flex-1 h-6 bg-[#0d0d16] rounded overflow-hidden flex">

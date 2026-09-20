@@ -12,8 +12,6 @@ import {
   api, type FulfillDemo, type FulfillPlan, type FulfillOrderRow, type FulfillParamsIn, type Assignment,
 } from '@/lib/api';
 import { CustomerMap, DockTable, FlowTimeline } from './CustomerMap';
-import { DeliveryNetworkMap } from '@/components/ui/DeliveryNetworkMap';
-import { useStore } from '@/lib/store';
 
 type Tab = 'orders' | 'inventory' | 'routes' | 'storage' | 'rebalance';
 
@@ -86,17 +84,6 @@ const selectCls =
   'focus:outline-none focus:border-blue-500/40 transition-colors';
 
 export function Fulfillment() {
-  // Scenario is generated from the ACTIVE dataset (warehouses + demand areas
-  // from the store, chosen by the login seed) so orders land on your own
-  // catchment and the sites/paths match the rest of the platform.
-  const { nb, wh } = useStore();
-  // Stable seed derived from the ACTIVE dataset (not hardcoded) so the scenario
-  // is reproducible for a given dataset but changes when the data changes.
-  const dataSeed = useMemo(() => {
-    const acc = [...nb.map(n => n.x + n.y + n.demand), ...wh.map(w => w.x + w.y + w.capacity)]
-      .reduce((s, v) => s + v, 0);
-    return Math.max(1, Math.round(acc * 1000) % 100000);
-  }, [nb, wh]);
   const [demo, setDemo] = useState<FulfillDemo | null>(null);
   const [plan, setPlan] = useState<FulfillPlan | null>(null);
   const [running, setRunning] = useState(false);
@@ -104,7 +91,6 @@ export function Fulfillment() {
   const [tab, setTab] = useState<Tab>('orders');
   const [selected, setSelected] = useState<string | null>(null);
   const [areaFilter, setAreaFilter] = useState<string>('all');
-  const [tripFocus, setTripFocus] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [commit, setCommit] = useState(false);
   const [includeStorage, setIncludeStorage] = useState(true);
@@ -118,7 +104,7 @@ export function Fulfillment() {
   const refresh = useCallback(async (onlyArea?: string) => {
     setRunning(true); setErr(null);
     try {
-      const d = await api.fulfillDemo({ seed: dataSeed, orders: ordersCount, neighborhoods: nb, warehouses: wh });
+      const d = await api.fulfillDemo({ seed: 7, orders: ordersCount });
       setDemo(d);
       // "Do it for me": when an area is picked, auto-plan just that area's
       // orders so every recommendation is scoped to what you filtered.
@@ -135,9 +121,9 @@ export function Fulfillment() {
     } catch (e: any) {
       setErr(e.message || 'Fulfillment plan failed');
     } finally { setRunning(false); }
-  }, [ordersCount, params, commit, includeStorage, includeRebalance, dataSeed, nb, wh]);
+  }, [ordersCount, params, commit, includeStorage, includeRebalance]);
 
-  useEffect(() => { refresh(); }, [dataSeed]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { refresh(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Apply the suggested stock transfers for real (books units site-to-site). */
   const applyTransfers = useCallback(async () => {
@@ -216,11 +202,11 @@ export function Fulfillment() {
   );
 
   return (
-    <div className="h-full overflow-y-auto bg-[#0a0a0f] p-6 space-y-5">
+    <div className="fulfillment-shell page-enter h-full overflow-y-auto bg-[#0a0a0f] p-4 md:p-7 space-y-5">
       {/* header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
+      <div className="fulfillment-hero flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-lg font-semibold text-white flex items-center gap-2">
+          <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-white flex items-center gap-2">
             <Truck size={16} className="text-blue-400" />Order Fulfillment
             {demo?.warehouseVia && (
               <span className="text-[10px] font-mono font-normal text-[#8080a0] border border-[#1e1e2e] rounded px-1.5 py-0.5"
@@ -246,15 +232,15 @@ export function Fulfillment() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3 rounded-lg border border-blue-500/20 bg-blue-500/5 p-4 text-xs">
-        <div><span className="font-semibold text-blue-300">1. Run plan</span><p className="mt-1 text-[#a0a0b0]">Score every warehouse for stock, distance, cost, and delivery deadline.</p></div>
-        <div><span className="font-semibold text-blue-300">2. Select a customer</span><p className="mt-1 text-[#a0a0b0]">Click an order below or a customer dot on the network map.</p></div>
-        <div><span className="font-semibold text-blue-300">3. Review the decision</span><p className="mt-1 text-[#a0a0b0]">See the recommended warehouse, delivery route, ETA, and cost.</p></div>
-        <div><span className="font-semibold text-blue-300">4. Plan growth</span><p className="mt-1 text-[#a0a0b0]">Use Year Simulation to identify when and where to open a new warehouse.</p></div>
+      <div className="fulfillment-steps grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
+        <div className="workflow-step active"><b>01</b><span>Run plan</span><p>Score every warehouse for stock, distance, cost, and delivery deadline.</p></div>
+        <div className="workflow-step"><b>02</b><span>Select a customer</span><p>Click an order below or a customer dot on the network map.</p></div>
+        <div className="workflow-step"><b>03</b><span>Review the decision</span><p>See the recommended warehouse, delivery route, ETA, and cost.</p></div>
+        <div className="workflow-step"><b>04</b><span>Plan growth</span><p>Use Year Simulation to identify when and where to open a new warehouse.</p></div>
       </div>
 
       {/* operating parameters */}
-      <Card>
+      <Card className="fulfillment-controls">
         <CardBody className="flex flex-wrap items-end gap-3">
           <label className="text-[10px] font-mono uppercase tracking-widest text-[#3a3a50] flex flex-col gap-1">
             Strategy
@@ -306,8 +292,8 @@ export function Fulfillment() {
       </Card>
 
       {err && (
-        <Card><CardBody className="flex items-center gap-2 text-xs text-red-400">
-          <AlertTriangle size={13} />{err}
+        <Card className="ops-error"><CardBody className="flex items-start gap-3 text-xs text-red-300">
+          <AlertTriangle size={16} className="mt-0.5 shrink-0" /><div><strong className="block text-red-200">Fulfillment plan unavailable</strong><span className="mt-1 block text-red-300/80">The operational solver could not complete this plan. Existing controls and data are unchanged.</span><code className="mt-2 block break-all rounded bg-black/20 px-2 py-1 font-mono text-[10px] text-red-300/60">{err}</code></div>
         </CardBody></Card>
       )}
 
@@ -342,49 +328,52 @@ export function Fulfillment() {
                 <DockTable plan={plan} demo={demo} order={selectedOrder} assignments={selectedAssignments} />
               </>
             ) : (
-            <>
-            <DeliveryNetworkMap
-              wh={demo.warehouses}
-              trips={(plan.trips || []).map(t => ({
-                tripId: t.tripId, warehouseId: t.warehouseId, warehouseName: t.warehouseName,
-                vehicleId: t.vehicleId, departHr: t.departHr, distanceKm: t.distanceKm,
-                loadPct: t.loadPct, stops: t.stops,
-              }))}
-              selectedTripId={tripFocus}
-              onSelectTrip={id => setTripFocus(prev => (prev === id ? null : id))}
-              onSelectOrder={id => { setSelected(id); setTab('orders'); }}
-              height={420}
-            />
-            <div className="mt-3 flex items-center gap-2 flex-wrap">
-              <span className="text-[10px] font-mono uppercase tracking-widest text-[#3a3a50]">Trips</span>
-              {(plan.trips || []).map((t, i) => {
-                const colors = ['#60a5fa', '#f472b6', '#34d399', '#fbbf24', '#a78bfa', '#22d3ee', '#fb923c', '#4ade80', '#f87171', '#818cf8'];
-                const on = tripFocus === t.tripId;
+            <svg viewBox="0 0 100 100" className="w-full h-[300px]">
+              {[20, 40, 60, 80].map(v => (
+                <g key={'g' + v}>
+                  <line x1={v} y1={6} x2={v} y2={94} stroke="#16161f" strokeWidth={0.2} />
+                  <line x1={6} y1={v} x2={94} y2={v} stroke="#16161f" strokeWidth={0.2} />
+                </g>
+              ))}
+              {plan.assignments.map((a, i) => {
+                const w = demo.warehouses.find(x => x.id === a.warehouseId);
+                if (!w) return null;
+                const isSel = a.orderId === selected;
+                const bad = a.atRisk || a.lateHr > 0 || a.split;
                 return (
-                  <button key={t.tripId}
-                    onClick={() => setTripFocus(on ? null : t.tripId)}
-                    className={cn('flex items-center gap-1.5 text-[10px] font-mono px-2 py-1 rounded border transition-colors',
-                      on ? 'border-blue-500/50 bg-blue-500/10 text-white' : 'border-[#1e1e2e] text-[#8080a0] hover:text-white')}>
-                    <span className="w-2 h-2 rounded-full inline-block" style={{ background: colors[i % colors.length] }} />
-                    {t.tripId} · {t.stopsCount} stops · {t.distanceKm.toFixed(0)} km
-                  </button>
+                  <line key={'f' + i} x1={w.x} y1={100 - w.y} x2={a.x} y2={100 - a.y}
+                    stroke={bad ? '#ef4444' : '#3b82f6'}
+                    strokeWidth={isSel ? 0.9 : bad ? 0.5 : 0.35}
+                    opacity={selected == null ? 0.5 : isSel ? 1 : 0.12}
+                    strokeLinecap="round" />
                 );
               })}
-              {tripFocus && (
-                <button onClick={() => setTripFocus(null)}
-                  className="text-[10px] font-mono px-2 py-1 rounded border border-[#1e1e2e] text-[#8080a0] hover:text-white">
-                  clear
-                </button>
-              )}
-            </div>
-            </>
+              {(selected ? plan.orders.filter(o => o.orderId === selected)
+                : filteredOrders.length ? filteredOrders : plan.orders).map(o => (
+                <circle key={'o' + o.orderId} cx={o.x} cy={100 - o.y}
+                  r={selected === o.orderId ? 1.6 : 0.9}
+                  onClick={() => { setSelected(o.orderId); setTab('orders'); }}
+                  className="cursor-pointer"
+                  stroke={selected === o.orderId ? '#ffffff' : 'transparent'} strokeWidth={selected === o.orderId ? 0.7 : 0}
+                  fill={o.status === 'unfulfilled' ? '#ef4444' : o.status === 'partial' ? '#f59e0b' : '#60a5fa'} />
+              ))}
+              {demo.warehouses.map(w => (
+                <g key={w.id}>
+                  <rect x={w.x - 2.4} y={100 - w.y - 2.4} width={4.8} height={4.8} rx={0.8} fill="#22c55e" />
+                  <text x={w.x + 3.4} y={100 - w.y + 1.1} fontSize={2.5} fill="#8080a0"
+                    fontFamily="monospace">{(w.name || w.id).split(' ')[0]}</text>
+                  <text x={w.x + 3.4} y={100 - w.y + 4.1} fontSize={2.1} fill="#4a4a60"
+                    fontFamily="monospace">cap {fmt((w.throughputPerHr ?? w.capacity ?? 0) >= 1e9 ? (w.capacity ?? 0) : (w.throughputPerHr ?? w.capacity ?? 0))}</text>
+                </g>
+              ))}
+            </svg>
             )}
           </CardBody>
         </Card>
       )}
 
       {/* tabs */}
-      <div className="flex items-center gap-1 border-b border-[#1e1e2e] overflow-x-auto">
+      <div className="operations-tabs flex items-center gap-1 border-b border-[#1e1e2e] overflow-x-auto">
         {TABS.map(t => {
           const Icon = t.icon;
           const count = t.id === 'rebalance' ? plan?.rebalance?.moves.length ?? 0 : 0;

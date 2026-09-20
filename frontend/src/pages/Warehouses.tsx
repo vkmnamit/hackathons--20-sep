@@ -1,10 +1,9 @@
-import { useEffect, useState } from 'react';
-import { Card, CardHeader, CardBody } from '@/components/ui/Card';
+import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { fmt } from '@/lib/utils';
 import { api, type FulfillWarehouse } from '@/lib/api';
-import { Warehouse as WarehouseIcon, Plus, Trash2, Save, RefreshCw, MapPin } from 'lucide-react';
+import { Warehouse as WarehouseIcon, Plus, Trash2, Save, RefreshCw, MapPin, Search, ChevronDown, Activity, Boxes, Gauge } from 'lucide-react';
 
 const blank = (): FulfillWarehouse => ({
   id: 'W' + Math.floor(100 + Math.random() * 900),
@@ -24,6 +23,10 @@ export function Warehouses() {
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const [status, setStatus] = useState<'all' | 'open' | 'closed'>('all');
+  const [sort, setSort] = useState<'name' | 'capacity' | 'throughput'>('name');
 
   const load = async () => {
     setLoading(true); setErr(null);
@@ -48,12 +51,20 @@ export function Warehouses() {
     finally { setSaving(false); }
   };
   const num = (v: string, fb: number) => { const n = parseFloat(v); return isFinite(n) ? n : fb; };
+  const visibleRows = useMemo(() => rows.filter(w => {
+    const matchesQuery = `${w.name || ''} ${w.id}`.toLowerCase().includes(query.toLowerCase());
+    const matchesStatus = status === 'all' || (status === 'open' ? w.open !== false : w.open === false);
+    return matchesQuery && matchesStatus;
+  }).sort((a, b) => sort === 'capacity' ? (b.capacity ?? 0) - (a.capacity ?? 0) : sort === 'throughput' ? (b.throughputPerHr ?? 0) - (a.throughputPerHr ?? 0) : (a.name || a.id).localeCompare(b.name || b.id)), [rows, query, status, sort]);
+  const totalCapacity = rows.reduce((sum, w) => sum + (w.capacity ?? 0), 0);
+  const totalThroughput = rows.reduce((sum, w) => sum + (w.throughputPerHr ?? 0), 0);
+  const openCount = rows.filter(w => w.open !== false).length;
 
   return (
-    <div className="p-4 space-y-4 max-w-6xl mx-auto">
-      <div className="flex items-center justify-between flex-wrap gap-2">
+    <div className="warehouses-shell page-enter p-4 md:p-7 space-y-5 max-w-7xl mx-auto">
+      <div className="warehouses-header flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-base font-semibold text-white flex items-center gap-2">
+          <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-white flex items-center gap-2">
             <WarehouseIcon size={15} className="text-emerald-400" />Warehouses
           </h1>
           <p className="text-[11px] text-[#4a4a60]">
@@ -75,32 +86,38 @@ export function Warehouses() {
         </div>
       </div>
 
-      {err && <Card><CardBody className="text-xs text-red-400">{err}</CardBody></Card>}
-      {msg && <Card><CardBody className="text-xs text-emerald-400">{msg}</CardBody></Card>}
+      {err && <div className="warehouse-alert warehouse-alert-error">{err}</div>}
+      {msg && <div className="warehouse-alert warehouse-alert-success">{msg}</div>}
+
+      <section className="warehouse-overview">
+        <div className="section-kicker"><Activity size={12} /> Network overview</div>
+        <div className="warehouse-metrics"><div><span>Total warehouses</span><strong>{rows.length}</strong></div><div><span>Open warehouses</span><strong className="text-emerald-300">{openCount}</strong></div><div><span>Total capacity</span><strong>{fmt(totalCapacity)}</strong><small>units</small></div><div><span>Total throughput</span><strong>{fmt(totalThroughput)}</strong><small>/hr</small></div></div>
+      </section>
+
+      <div className="warehouse-toolbar">
+        <div className="warehouse-search"><Search size={14} /><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search warehouses..." /></div>
+        <select value={status} onChange={e => setStatus(e.target.value as typeof status)}><option value="all">All status</option><option value="open">Open only</option><option value="closed">Closed only</option></select>
+        <select value={sort} onChange={e => setSort(e.target.value as typeof sort)}><option value="name">Sort: Name</option><option value="capacity">Sort: Capacity</option><option value="throughput">Sort: Throughput</option></select>
+        <Button size="sm" variant="secondary" onClick={() => { const next = blank(); setRows(prev => [...prev, next]); setExpanded(next.id); }}><Plus size={12} />Add warehouse</Button>
+      </div>
 
       {loading ? (
-        <Card><CardBody className="text-xs text-[#6b6b80]">Loading warehouses…</CardBody></Card>
+        <div className="warehouse-list-state">Loading warehouse network…</div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-          {rows.map(w => (
-            <Card key={w.id}>
-              <CardHeader>
-                <div className="flex items-center justify-between gap-2">
-                  <input value={w.name || w.id} onChange={e => patch(w.id, { name: e.target.value })}
-                    className="bg-transparent text-sm font-medium text-white focus:outline-none w-48 border-b border-transparent focus:border-blue-500/40" />
-                  <div className="flex items-center gap-1.5">
-                    <Badge variant={w.open === false ? 'muted' : 'success'}>{w.open === false ? 'closed' : 'open'}</Badge>
-                    <button onClick={() => patch(w.id, { open: !(w.open !== false) })}
-                      className="text-[10px] font-mono text-[#8080a0] hover:text-white border border-[#1e1e2e] rounded px-1.5 py-0.5">
-                      {w.open === false ? 'open' : 'close'}
-                    </button>
-                    <button onClick={() => setRows(prev => prev.filter(x => x.id !== w.id))}
-                      className="text-[#4a4a60] hover:text-red-400 p-1"><Trash2 size={13} /></button>
-                  </div>
-                </div>
-                <div className="text-[10px] font-mono text-[#4a4a60] mt-0.5">{w.id}</div>
-              </CardHeader>
-              <CardBody className="grid grid-cols-3 gap-2 text-[11px]">
+        <div className="warehouse-list">
+          {visibleRows.map(w => {
+            const signal = Math.min(100, Math.round(((w.throughputPerHr ?? 0) / Math.max(w.capacity ?? 1, 1)) * 100));
+            const isExpanded = expanded === w.id;
+            return <div key={w.id} className={`warehouse-row ${w.open === false ? 'is-closed' : 'is-open'} ${isExpanded ? 'is-expanded' : ''}`}>
+              <div className="warehouse-row-main">
+                <div className="warehouse-status-mark" />
+                <div className="warehouse-identity"><input value={w.name || w.id} onChange={e => patch(w.id, { name: e.target.value })} /><span>{w.id} · {w.open === false ? 'closed from network' : 'active in network'}</span></div>
+                <div className="warehouse-fact"><span>Capacity</span><strong>{fmt(w.capacity ?? 0)}</strong></div>
+                <div className="warehouse-fact"><span>Throughput</span><strong>{fmt(w.throughputPerHr ?? 0)}<small>/hr</small></strong></div>
+                <div className="warehouse-signal"><div className="signal-label"><span>capacity signal</span><b>{signal}%</b></div><div className="signal-track"><i style={{ width: `${signal}%` }} /></div></div>
+                <div className="warehouse-actions"><Badge variant={w.open === false ? 'muted' : 'success'}>{w.open === false ? 'closed' : 'open'}</Badge><button onClick={() => patch(w.id, { open: !(w.open !== false) })}>{w.open === false ? 'Open' : 'Close'}</button><button className="edit-toggle" onClick={() => setExpanded(isExpanded ? null : w.id)}>{isExpanded ? 'Done' : 'Edit details'}<ChevronDown size={13} className={isExpanded ? 'rotate-180' : ''} /></button><button className="delete-action" onClick={() => setRows(prev => prev.filter(x => x.id !== w.id))}><Trash2 size={14} /></button></div>
+              </div>
+              {isExpanded && <div className="warehouse-edit-details"><div className="edit-details-heading"><div><span>Editing {w.id}</span><small>Coordinates and operating profile</small></div><MapPin size={15} /></div><div className="edit-fields">
                 <label className="space-y-1">
                   <span className="text-[10px] font-mono text-[#4a4a60] flex items-center gap-1"><MapPin size={10} />x (east km)</span>
                   <input type="number" value={w.x} onChange={e => patch(w.id, { x: num(e.target.value, w.x) })}
@@ -131,12 +148,10 @@ export function Warehouses() {
                   <input value={(w.waves || []).join(',')} onChange={e => patch(w.id, { waves: e.target.value.split(',').map(s => num(s.trim(), 0)).filter(n => n > 0) })}
                     className="w-full bg-[#111118] border border-[#1e1e2e] rounded px-2 py-1 text-white font-mono" />
                 </label>
-                <div className="col-span-3 text-[10px] font-mono text-[#3a3a50]">
-                  cap {fmt(w.capacity ?? 0)} · {fmt(w.throughputPerHr ?? 0)}/hr · waves {(w.waves || []).join(', ')}
-                </div>
-              </CardBody>
-            </Card>
-          ))}
+              </div></div>}
+            </div>;
+          })}
+          {!visibleRows.length && <div className="warehouse-list-state">No warehouses match the current filters.</div>}
         </div>
       )}
     </div>
