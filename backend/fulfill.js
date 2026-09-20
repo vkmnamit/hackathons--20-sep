@@ -20,7 +20,23 @@ function rng32(seed){ let a=seed>>>0; return function(){
   let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t;
   return ((t^t>>>14)>>>0)/4294967296; }; }
 function num(v,d){ const n=typeof v==='number'?v:parseFloat(v); return isFinite(n)?n:d; }
-function distKm(a,b,factor){ return Math.hypot(a.x-b.x,a.y-b.y)*(factor==null?1.35:factor); }
+function distKm(a,b,factor){
+  let dx = a.x - b.x;
+  let dy = a.y - b.y;
+  const isGeoLatX = (a.x >= 6 && a.x <= 40) || (b.x >= 6 && b.x <= 40);
+  const isGeoLngY = (a.y >= 60 && a.y <= 100) || (b.y >= 60 && b.y <= 100);
+  const isGeoLatY = (a.y >= 6 && a.y <= 40) || (b.y >= 6 && b.y <= 40);
+  const isGeoLngX = (a.x >= 60 && a.x <= 100) || (b.x >= 60 && b.x <= 100);
+
+  if (isGeoLatX && isGeoLngY) {
+    dx = (a.x - b.x) * 111.0;
+    dy = (a.y - b.y) * 108.2;
+  } else if (isGeoLatY && isGeoLngX) {
+    dx = (a.x - b.x) * 108.2;
+    dy = (a.y - b.y) * 111.0;
+  }
+  return Math.hypot(dx, dy) * (factor == null ? 1.35 : factor);
+}
 function round(v,d){ const p=Math.pow(10,d==null?2:d); return Math.round(v*p)/p; }
 function priorityOf(p){
   if(typeof p==='number') return Math.max(0,Math.min(2,p));

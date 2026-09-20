@@ -42,10 +42,34 @@ struct Solution {
 const double INF = 1e100;
 
 inline double euclid(double x1,double y1,double x2,double y2){
-    double dx=x1-x2, dy=y1-y2; return std::sqrt(dx*dx+dy*dy);
+    double dx=x1-x2, dy=y1-y2;
+    bool isGeoLatX = (x1 >= 6 && x1 <= 40) || (x2 >= 6 && x2 <= 40);
+    bool isGeoLngY = (y1 >= 60 && y1 <= 100) || (y2 >= 60 && y2 <= 100);
+    bool isGeoLatY = (y1 >= 6 && y1 <= 40) || (y2 >= 6 && y2 <= 40);
+    bool isGeoLngX = (x1 >= 60 && x1 <= 100) || (x2 >= 60 && x2 <= 100);
+    if (isGeoLatX && isGeoLngY) {
+        dx = (x1 - x2) * 111.0;
+        dy = (y1 - y2) * 108.2;
+    } else if (isGeoLatY && isGeoLngX) {
+        dx = (x1 - x2) * 108.2;
+        dy = (y1 - y2) * 111.0;
+    }
+    return std::sqrt(dx*dx+dy*dy);
 }
 inline double manhattan(double x1,double y1,double x2,double y2){
-    return std::fabs(x1-x2)+std::fabs(y1-y2);
+    double dx=x1-x2, dy=y1-y2;
+    bool isGeoLatX = (x1 >= 6 && x1 <= 40) || (x2 >= 6 && x2 <= 40);
+    bool isGeoLngY = (y1 >= 60 && y1 <= 100) || (y2 >= 60 && y2 <= 100);
+    bool isGeoLatY = (y1 >= 6 && y1 <= 40) || (y2 >= 6 && y2 <= 40);
+    bool isGeoLngX = (x1 >= 60 && x1 <= 100) || (x2 >= 60 && x2 <= 100);
+    if (isGeoLatX && isGeoLngY) {
+        dx = (x1 - x2) * 111.0;
+        dy = (y1 - y2) * 108.2;
+    } else if (isGeoLatY && isGeoLngX) {
+        dx = (x1 - x2) * 108.2;
+        dy = (y1 - y2) * 111.0;
+    }
+    return std::fabs(dx)+std::fabs(dy);
 }
 
 } // namespace wlo

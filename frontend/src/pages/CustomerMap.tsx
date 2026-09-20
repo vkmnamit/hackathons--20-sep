@@ -14,8 +14,23 @@ const capOf = (w: FulfillDemo['warehouses'][number]) => {
 export type Dock = { w: FulfillDemo['warehouses'][number]; a: Assignment | undefined; km: number; eta: number; optimal: boolean };
 
 export function dockList(plan: FulfillPlan, demo: FulfillDemo, order: FulfillOrderRow, assignments: Assignment[]): Dock[] {
-  const roadKm = (wx: number, wy: number) =>
-    Math.hypot(order.x - wx, order.y - wy) * (plan.params.roadFactor ?? 1.35);
+  const roadKm = (wx: number, wy: number) => {
+    let dx = order.x - wx;
+    let dy = order.y - wy;
+    const isGeoLatX = (order.x >= 6 && order.x <= 40) || (wx >= 6 && wx <= 40);
+    const isGeoLngY = (order.y >= 60 && order.y <= 100) || (wy >= 60 && wy <= 100);
+    const isGeoLatY = (order.y >= 6 && order.y <= 40) || (wy >= 6 && wy <= 40);
+    const isGeoLngX = (order.x >= 60 && order.x <= 100) || (wx >= 60 && wx <= 100);
+
+    if (isGeoLatX && isGeoLngY) {
+      dx = (order.x - wx) * 111.0;
+      dy = (order.y - wy) * 108.2;
+    } else if (isGeoLatY && isGeoLngX) {
+      dx = (order.x - wx) * 108.2;
+      dy = (order.y - wy) * 111.0;
+    }
+    return Math.hypot(dx, dy) * (plan.params.roadFactor ?? 1.35);
+  };
   const roadHr = (km: number) => (plan.params.kmPerHour ? km / plan.params.kmPerHour : 0);
   return demo.warehouses.map(w => {
     const a = assignments.find(x => x.warehouseId === w.id);

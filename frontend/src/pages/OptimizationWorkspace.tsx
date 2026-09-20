@@ -989,13 +989,21 @@ function WloMapSVG({
     : [];
   allProposals.forEach(p => { xs.push(p.x); ys.push(p.y); });
 
-  const minX = xs.length ? Math.min(...xs) - 0.005 : 12.9;
-  const maxX = xs.length ? Math.max(...xs) + 0.005 : 13.0;
-  const minY = ys.length ? Math.min(...ys) - 0.005 : 77.5;
-  const maxY = ys.length ? Math.max(...ys) + 0.005 : 77.6;
+  const rawMinX = xs.length ? Math.min(...xs) : 0;
+  const rawMaxX = xs.length ? Math.max(...xs) : 100;
+  const rawMinY = ys.length ? Math.min(...ys) : 0;
+  const rawMaxY = ys.length ? Math.max(...ys) : 100;
 
-  const dx = Math.max(0.001, maxX - minX);
-  const dy = Math.max(0.001, maxY - minY);
+  const spanX = Math.max(0.0001, rawMaxX - rawMinX);
+  const spanY = Math.max(0.0001, rawMaxY - rawMinY);
+
+  const minX = rawMinX - spanX * 0.08;
+  const maxX = rawMaxX + spanX * 0.08;
+  const minY = rawMinY - spanY * 0.08;
+  const maxY = rawMaxY + spanY * 0.08;
+
+  const dx = Math.max(0.0001, maxX - minX);
+  const dy = Math.max(0.0001, maxY - minY);
 
   const W = 800;
   const H = 550;

@@ -122,7 +122,7 @@ export const api = {
     try {
       return await post<ExpansionResult>('/api/expansion', body);
     } catch {
-      return solveExpansion(body.neighborhoods, body.candidates, body.params, body.expansion?.growthPct || 25);
+      return solveExpansion(body.neighborhoods, body.candidates, body.params, body.expansion?.growthPct || 25, body.expansion?.utilThreshold || 0.85);
     }
   },
   sensitivity: async (body: SensBody): Promise<SensResult> => {
@@ -132,11 +132,11 @@ export const api = {
       return solveSensitivity(body.neighborhoods, body.candidates, body.params);
     }
   },
-  median: async (body: MedBody): Promise<MedResult> => {
+  median: async (body: MedBody & { candidates?: Candidate[] }): Promise<MedResult & { x?: number; y?: number; nearestWarehouse?: string; distanceToNearest?: number }> => {
     try {
-      return await post<MedResult>('/api/median', body);
+      return await post<MedResult & { x?: number; y?: number; nearestWarehouse?: string; distanceToNearest?: number }>('/api/median', body);
     } catch {
-      return solveWeiszfeld(body.neighborhoods, body.iterations, body.initial);
+      return solveWeiszfeld(body.neighborhoods, body.candidates || [], body.iterations || 100);
     }
   },
   explain: async (body: OptBody) => {
