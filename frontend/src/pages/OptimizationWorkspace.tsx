@@ -575,8 +575,8 @@ export function OptimizationWorkspace() {
                 {/* Map Legend Bar */}
                 <div className="p-2.5 border-t border-[#1e1e2e] bg-[#0d0d16]/95 backdrop-blur flex items-center justify-between text-[11px] text-[#8080a0] flex-wrap gap-2">
                   <div className="flex items-center gap-4">
-                    <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-blue-500/30 border border-blue-400 inline-block" /> Demand Area (Circle Area = Daily Orders)</span>
-                    <span className="flex items-center gap-1.5"><span className="w-3.5 h-3.5 rounded bg-emerald-500 border border-white inline-block" /> Selected Open Hub</span>
+                    <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-blue-500/30 border border-blue-400 inline-block" /> Demand Area (size &amp; label = live orders, ring = assigned hub)</span>
+                    <span className="flex items-center gap-1.5"><span className="text-amber-300 text-sm leading-none">⭐</span> Open Hub (ring = utilisation · meter = load/cap)</span>
                     <span className="flex items-center gap-1.5"><span className="w-3.5 h-3.5 rounded bg-[#1e1e2e] border border-[#3a3a50] inline-block" /> Inactive Candidate</span>
                     <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-red-500 inline-block" /> Unserved Radius/Cap Violation</span>
                   </div>
@@ -1014,6 +1014,18 @@ export function OptimizationWorkspace() {
 }
 
 // ----------------- SVG MAP CANVAS HELPER -----------------
+
+// Draws a 5-point star polygon (used for open warehouse hubs)
+function starPath(cx: number, cy: number, outer: number, inner: number, points = 5): string {
+  let d = '';
+  for (let i = 0; i < points * 2; i++) {
+    const r = i % 2 === 0 ? outer : inner;
+    const a = (Math.PI * i) / points - Math.PI / 2;
+    d += `${i === 0 ? 'M' : 'L'}${(cx + r * Math.cos(a)).toFixed(2)},${(cy + r * Math.sin(a)).toFixed(2)}`;
+  }
+  return d + 'Z';
+}
+
 function WloMapSVG({
   neighborhoods,
   warehouses,
@@ -1067,6 +1079,21 @@ function WloMapSVG({
     : assignedRaw;
   const maxDemand = Math.max(...neighborhoods.map(n => n.demand), 1);
 
+  // ---- Real-algorithm-derived hub dynamics ----
+  // Each open hub gets its own colour; assignment lines are drawn in that
+  // colour so the map literally visualises the solver's clustering.
+  const openList = warehouses.filter(w => openIds.has(w.id));
+  const HUB_COLORS = ['#22d3ee', '#a78bfa', '#f472b6', '#facc15', '#4ade80', '#fb923c', '#60a5fa'];
+  const hubColor = (id: string) =>
+    HUB_COLORS[Math.max(0, openList.findIndex(w => w.id === id)) % HUB_COLORS.length] || '#22d3ee';
+  const utilColor = (u: number) => (u > 0.9 ? '#ef4444' : u > 0.75 ? '#f59e0b' : '#22c55e');
+  // Live load per hub = sum of solver-assigned demand (matches utilization)
+  const loadByWh: Record<string, number> = {};
+  Object.entries(assigned).forEach(([nid, wid]) => {
+    const n = neighborhoods.find(x => x.id === nid);
+    if (n && wid && openIds.has(wid)) loadByWh[wid] = (loadByWh[wid] || 0) + n.demand;
+  });
+
   // expansion overlays: overloaded hubs, capacity boosts, proposed new site
   const finalAsgRaw: any = expansion?.final?.assignments || {};
   const finalAsg: Record<string, string> = Array.isArray(finalAsgRaw)
@@ -1088,7 +1115,8 @@ function WloMapSVG({
         <line key={`v${i}`} x1={i * 40} y1="0" x2={i * 40} y2={H} stroke="#141426" strokeWidth="1" />
       ))}
 
-      {/* Assignment Lines */}
+      {/* Assignment Lines — colour per hub (solver's real clustering),
+          stroke width scales with that node's demand */}
       {Object.entries(assigned).map(([nid, wid]) => {
         const n = neighborhoods.find(x => x.id === nid);
         const w = warehouses.find(x => x.id === wid);
@@ -1100,9 +1128,9 @@ function WloMapSVG({
             y1={toY(n.y)}
             x2={toX(w.x)}
             y2={toY(w.y)}
-            stroke="#3b82f6"
-            strokeWidth="1.2"
-            strokeOpacity="0.25"
+            stroke={hubColor(wid)}
+            strokeWidth={0.8 + (n.demand / maxDemand) * 2.4}
+            strokeOpacity="0.35"
             strokeDasharray="3 3"
           />
         );
@@ -1124,12 +1152,14 @@ function WloMapSVG({
         />
       ))}
 
-      {/* Neighborhood Nodes */}
+      {/* Neighborhood Nodes — radius scales with live demand; ring shows the
+          hub the real solver assigned it to */}
       {neighborhoods.map(n => {
         const r = 4 + (n.demand / maxDemand) * 8;
         const isUnserved = result?.unserved?.includes(n.id);
         const wid = assigned[n.id];
         const w = warehouses.find(x => x.id === wid);
+        const ringColor = isUnserved ? '#ef4444' : wid && openIds.has(wid) ? hubColor(wid) : '#60a5fa';
 
         return (
           <g
@@ -1142,15 +1172,15 @@ function WloMapSVG({
               detail: `Daily demand: ${n.demand} orders · Assigned to: ${w ? w.name || w.id : isUnserved ? 'None (Unserved)' : 'Auto-routed'}`,
             })}
           >
-            <title>{`${n.name || n.id}: ${n.demand} orders`}</title>
-            <circle cx={toX(n.x)} cy={toY(n.y)} r={r + 4} fill={isUnserved ? '#ef4444' : '#3b82f6'} fillOpacity="0.1" />
+            <title>{`${n.name || n.id}: ${n.demand} orders${w ? ` → ${w.name || w.id}` : ''}`}</title>
+            <circle cx={toX(n.x)} cy={toY(n.y)} r={r + 4} fill={ringColor} fillOpacity="0.1" />
             <circle
               cx={toX(n.x)}
               cy={toY(n.y)}
               r={r}
               fill={isUnserved ? '#ef4444' : '#1e3a5f'}
-              stroke={isUnserved ? '#fca5a5' : '#60a5fa'}
-              strokeWidth={isUnserved ? 2 : 1}
+              stroke={ringColor}
+              strokeWidth={isUnserved ? 2 : 1.2}
             />
             <text
               x={toX(n.x)}
@@ -1162,14 +1192,31 @@ function WloMapSVG({
             >
               {n.name || n.id}
             </text>
+            <text
+              x={toX(n.x)}
+              y={toY(n.y) + r + 20}
+              textAnchor="middle"
+              fontSize="8.5"
+              fontWeight="bold"
+              fill={isUnserved ? '#f87171' : ringColor}
+              fontFamily="monospace"
+            >
+              {n.demand} orders
+            </text>
           </g>
         );
       })}
 
-      {/* Warehouse Candidate / Open Hub Nodes */}
+      {/* Warehouse Candidate / Open Hub Nodes — open hubs render as a ⭐ star
+          in their cluster colour, with a live load/capacity utilization meter */}
       {warehouses.map(w => {
         const isOpen = openIds.has(w.id);
         const u = result?.utilization?.find(x => x.id === w.id);
+        const uc = u ? u.u : 0;
+        const col = isOpen ? hubColor(w.id) : '#4a4a60';
+        const load = loadByWh[w.id] ?? (u ? Math.round(uc * w.capacity) : 0);
+        const cx = toX(w.x);
+        const cy = toY(w.y);
 
         return (
           <g
@@ -1179,49 +1226,61 @@ function WloMapSVG({
               kind: 'warehouse',
               id: w.id,
               label: w.name || w.id,
-              detail: `${isOpen ? 'Open Hub' : 'Candidate Site'} · Capacity: ${w.capacity} · Fixed setup: $${w.fixedCost}${u ? ` · ${Math.round(u.u * 100)}% utilized` : ''}`,
+              detail: `${isOpen ? 'Open Hub' : 'Candidate Site'} · Load ${load}/${w.capacity} (${Math.round(uc * 100)}% util) · Fixed setup: $${w.fixedCost}`,
             })}
           >
-            <title>{`${w.name || w.id}: ${isOpen ? 'OPEN' : 'Candidate'}, Cap: ${w.capacity}`}</title>
-            <circle
-              cx={toX(w.x)}
-              cy={toY(w.y)}
-              r={isOpen ? 16 : 12}
-              fill={isOpen ? '#22c55e' : '#1e1e2e'}
-              fillOpacity={isOpen ? 0.2 : 0.6}
-              stroke={isOpen ? '#4ade80' : '#4a4a60'}
-              strokeWidth={isOpen ? 2 : 1}
-            />
-            <rect
-              x={toX(w.x) - 7}
-              y={toY(w.y) - 5}
-              width={14}
-              height={10}
-              rx={2}
-              fill={isOpen ? '#22c55e' : '#3a3a50'}
-            />
-            <text
-              x={toX(w.x)}
-              y={toY(w.y) - 14}
-              textAnchor="middle"
-              fontSize="10"
-              fontWeight="bold"
-              fill={isOpen ? '#4ade80' : '#8080a0'}
-              fontFamily="monospace"
-            >
-              {w.name || w.id}
+            <title>{`${w.name || w.id}: ${isOpen ? 'OPEN ⭐' : 'Candidate'} · Cap ${w.capacity} · Load ${load}/${w.capacity}`}</title>
+
+            {/* pulsing service-ring glow for open hubs */}
+            {isOpen && (
+              <circle cx={cx} cy={cy} r={22} fill={col} fillOpacity="0.08"
+                stroke={uc > 0.9 ? '#ef4444' : uc > 0.75 ? '#f59e0b' : col}
+                strokeWidth={uc > 0.75 ? 2 : 1} strokeOpacity="0.7" strokeDasharray={uc > 0.75 ? '5 3' : undefined} />
+            )}
+
+            {/* utilisation halo: arc ring filled proportionally to util */}
+            {isOpen && (
+              <circle cx={cx} cy={cy} r={19} fill="none"
+                stroke={utilColor(uc)} strokeWidth="2.5" strokeLinecap="round"
+                strokeDasharray={`${(uc * 2 * Math.PI * 19).toFixed(1)} ${(2 * Math.PI * 19).toFixed(1)}`}
+                transform={`rotate(-90 ${cx} ${cy})`} />
+            )}
+
+            {isOpen ? (
+              <path d={starPath(cx, cy, 13, 5.5)} fill={col} fillOpacity="0.9"
+                stroke="#ffffff" strokeWidth="1.2" strokeOpacity="0.8" />
+            ) : (
+              <>
+                <circle cx={cx} cy={cy} r={10} fill="#1e1e2e" fillOpacity="0.7"
+                  stroke="#4a4a60" strokeWidth="1" />
+                <rect x={cx - 6} y={cy - 4} width={12} height={8} rx={2} fill="#3a3a50" />
+              </>
+            )}
+
+            {/* name */}
+            <text x={cx} y={cy - 24} textAnchor="middle" fontSize="10" fontWeight="bold"
+              fill={isOpen ? col : '#8080a0'} fontFamily="monospace">
+              {isOpen ? '⭐ ' : ''}{w.name || w.id}
             </text>
-            {isOpen && u && (
-              <text
-                x={toX(w.x)}
-                y={toY(w.y) + 18}
-                textAnchor="middle"
-                fontSize="9"
-                fill="#4ade80"
-                fontFamily="monospace"
-              >
-                {Math.round(u.u * 100)}%
-              </text>
+
+            {/* capacity */}
+            <text x={cx} y={cy + 30} textAnchor="middle" fontSize="9"
+              fill={isOpen ? '#c8c8dc' : '#6b6b80'} fontFamily="monospace">
+              cap {w.capacity}
+            </text>
+
+            {/* live utilization meter */}
+            {isOpen && (
+              <>
+                <rect x={cx - 16} y={cy + 36} width={32} height={4} rx={2}
+                  fill="#1e1e2e" stroke="#2a2a3a" strokeWidth="0.5" />
+                <rect x={cx - 16} y={cy + 36} width={Math.max(2, Math.min(32, uc * 32))} height={4} rx={2}
+                  fill={utilColor(uc)} />
+                <text x={cx} y={cy + 50} textAnchor="middle" fontSize="8.5" fontWeight="bold"
+                  fill={utilColor(uc)} fontFamily="monospace">
+                  {load}/{w.capacity} · {Math.round(uc * 100)}%
+                </text>
+              </>
             )}
           </g>
         );
