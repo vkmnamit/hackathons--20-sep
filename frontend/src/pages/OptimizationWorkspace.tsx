@@ -35,7 +35,8 @@ const DIST_METRICS = [
   { key: 'road',      label: 'Road Network (1.35x Circuity Multiplier)' },
 ];
 
-// In-depth roadmap: mathematical rationale + what the plan means and what to do, in order.
+// In-depth roadmap: mathematical rationale, rendered as a sub-panel
+// inside the AI Plan Review card so "why" never goes missing.
 function MathematicalRationale({ lines }: { lines?: string[] }) {
   if (!lines?.length) return null;
   return (
@@ -125,7 +126,6 @@ export function OptimizationWorkspace() {
   const [aiSummary, setAiSummary] = useState<string[]>([]);
   const [aiVia, setAiVia] = useState<string>('');
   const [aiLoading, setAiLoading] = useState(false);
-
   // Map state
   const [mapZoom, setMapZoom] = useState(1);
   const [mapSelection, setMapSelection] = useState<{ kind: 'demand' | 'warehouse'; id: string; label: string; detail: string } | null>(null);
@@ -194,18 +194,13 @@ export function OptimizationWorkspace() {
       setResult(out);
       setRan(true);
       // AI plan review — non-blocking: plan renders instantly, LLM narrative lands when ready.
+      // BASE-aware api.insights works on Vercel + localhost, with offline fallback.
       setAiSummary([]); setAiVia(''); setAiLoading(true);
-      fetch('/api/optimize/insights', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          solution: out, candidates: wh,
-          params: { algorithm: algo, distanceMetric: dist, maxServiceRadius: radius, deliveryCostPerKm: effectiveCostPerKm, capacity, fixedCost, minWarehouses: minW, maxWarehouses: maxW },
-          savingsPct: out.savingsPct, nbCount: scaledNb.length,
-        }),
-      }).then(r => r.json())
-        .then((r: { summary?: string[]; narrVia?: string }) => { setAiSummary(r.summary || []); setAiVia(r.narrVia || 'template'); })
-        .catch(() => {})
-        .finally(() => setAiLoading(false));
+      api.insights({
+        solution: out, candidates: wh,
+        params: { algorithm: algo, distanceMetric: dist, maxServiceRadius: radius, deliveryCostPerKm: effectiveCostPerKm, capacity, fixedCost, minWarehouses: minW, maxWarehouses: maxW },
+        savingsPct: out.savingsPct, nbCount: scaledNb.length,
+      }).then(r => { setAiSummary(r.summary || []); setAiVia(r.narrVia || 'template'); }).catch(() => {}).finally(() => setAiLoading(false));
     } catch (e: any) {
       setErr(e.message || 'Optimization solver failed');
     } finally {

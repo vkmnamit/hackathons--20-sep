@@ -146,6 +146,23 @@ export const api = {
       return solveCFLP(body.neighborhoods, body.candidates, body.params, true);
     }
   },
+  insights: async (body: { solution: OptResult; candidates: Candidate[]; params?: Params; savingsPct?: number; nbCount?: number }) => {
+    try {
+      return await post<{ summary: string[]; narrVia: string }>('/api/optimize/insights', body);
+    } catch {
+      // Offline/demo fallback: explain the plan from the solved network itself
+      const sol = body.solution as OptResult & { explanation?: string[] };
+      const open = sol.openWarehouses || [];
+      return {
+        summary: [
+          `Chosen Plan: open ${open.length} hub${open.length === 1 ? '' : 's'} (${open.join(', ') || 'none'}) via ${sol.algorithmUsed || 'the solver'}.`,
+          `Cost Breakdown: ${'$' + Math.round(sol.totalCost).toLocaleString()} total = ${'$' + Math.round(sol.deliveryCost).toLocaleString()} delivery + ${'$' + Math.round(sol.fixedCost).toLocaleString()} fixed${sol.savingsPct != null ? `, saving ${sol.savingsPct}% vs a single hub` : ''}.`,
+          ...(sol.explanation || []).slice(0, 5),
+        ].filter(Boolean),
+        narrVia: 'template (offline)',
+      };
+    }
+  },
   year: (body: YearBody) => post<YearResult>('/api/year', body),
   share: (body: ShareBody) => post<{ warehouses: TenantWarehouse[] }>('/api/share', body),
   tenants: (body: TenantsBody) => post<TenantsResult>('/api/tenants', body),

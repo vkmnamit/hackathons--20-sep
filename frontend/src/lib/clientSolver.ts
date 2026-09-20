@@ -524,8 +524,25 @@ export function solveSimulate(
   totals.sort((a, b) => a - b);
   const best = totals[0];
   const worst = totals[totals.length - 1];
-  const expectedTotal = Math.round(totals.reduce((s, c) => s + c, 0) / totals.length);
-  const p90 = totals[Math.floor(totals.length * 0.9)];
+  const expectedTotal = Math.round(totals.reduce((s, c) => s + c, 0) / Math.max(1, totals.length));
+  const p90 = totals[Math.min(totals.length - 1, Math.floor(totals.length * 0.9))];
+
+  // Histogram bins for the Cost Distribution chart (bin centre + share of runs)
+  const bins = Math.min(40, Math.max(8, Math.min(totals.length, 24)));
+  const lo = totals[0];
+  const hi = totals[totals.length - 1];
+  const w = hi > lo ? (hi - lo) / bins : 1;
+  const counts = new Array(bins).fill(0);
+  for (const v of totals) {
+    let b = hi > lo ? Math.floor((v - lo) / w) : 0;
+    if (b >= bins) b = bins - 1;
+    if (b < 0) b = 0;
+    counts[b]++;
+  }
+  const distribution = counts.map((c: number, b: number) => ({
+    cost: Math.round(hi > lo ? lo + (b + 0.5) * w : lo),
+    density: c / Math.max(1, totals.length),
+  }));
 
   return {
     expectedTotal,
@@ -534,6 +551,7 @@ export function solveSimulate(
     best,
     avgFixed: base.fixedCost,
     totals,
+    distribution,
     formula: 'Cost(s) = Fixed + Σ Demand(s) · Dist · Rate',
     samples: scenarios,
     growthPct,
