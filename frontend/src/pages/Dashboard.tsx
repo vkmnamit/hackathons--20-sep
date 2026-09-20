@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
 import { Activity, ArrowUpRight, Cpu, Gauge, MapPin, Package, RefreshCw, Radio, Route, ShieldCheck, TrendingDown, TrendingUp, Zap } from 'lucide-react';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -56,7 +57,70 @@ export function Dashboard({ onNavigate }: { onNavigate: (p: Page) => void }) {
   const whRows: WarehouseRow[] = (lastRun?.utilization || []).map((u, i) => ({ name: u.id, utilization: Math.round(u.u * 100), color: COLORS[i % COLORS.length] }));
   return <div className="page-enter dashboard-shell h-full overflow-y-auto bg-transparent p-4 md:p-7">
     <section className="editorial-hero relative mb-7 min-h-[650px] overflow-hidden border-b border-cyan-300/10 bg-[#08111d] px-5 pb-5 pt-7 md:px-9 md:pt-9"><div className="hero-orbit hero-orbit-one" /><div className="hero-orbit hero-orbit-two" /><div className="scanline" /><div className="relative z-10 max-w-xl"><div className="mb-4 flex items-center gap-2 text-[10px] font-mono uppercase tracking-[.25em] text-cyan-300"><span className="live-dot" />Live network / Bengaluru region</div><h1 className="max-w-2xl text-4xl font-semibold leading-[.98] tracking-[-.06em] text-white md:text-7xl">The network<br /><span className="holographic-text">is thinking.</span></h1><p className="mt-5 max-w-md text-sm leading-6 text-[#9bb0c9]">A live operational view of every decision between demand and delivery.</p><div className="mt-6 flex flex-wrap items-center gap-2"><Badge variant={health?.llm?.startsWith('on:') ? 'success' : 'muted'}><Activity size={11} />{health?.llm || 'Syncing telemetry'}</Badge><Badge variant="info"><Cpu size={11} />Exact solver</Badge><Button variant="primary" size="md" loading={loading} onClick={runDemo}><RefreshCw size={14} />Re-optimize network</Button></div></div><div className="hero-network-wrap absolute bottom-0 left-0 right-0 md:left-[25%] md:top-24"><NetworkPulse rows={whRows} /></div><div className="hero-caption absolute bottom-6 left-6 z-20 hidden items-center gap-4 text-[10px] font-mono uppercase tracking-[.16em] text-[#6f87a3] md:flex"><span><i className="legend-dot legend-cyan" />active flow</span><span><i className="legend-dot legend-blue" />capacity signal</span><span className="text-cyan-300/80">{whRows.length} hubs online</span></div></section>
-    <section className="editorial-kpis mb-7 grid gap-4 lg:grid-cols-[1.4fr_.8fr_.8fr_.8fr]">{lastRun && <><div className="primary-kpi relative overflow-hidden border-l-2 border-emerald-300 bg-gradient-to-br from-[#102b2d] via-[#0d1e25] to-[#0b141f] p-6 shadow-[0_20px_60px_rgba(5,35,38,.3)]"><div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-emerald-300/10 blur-3xl" /><div className="relative"><div className="flex items-center justify-between"><div className="eyebrow"><TrendingDown size={12} /> Primary outcome</div><ArrowUpRight size={18} className="text-emerald-300" /></div><div className="mt-6 text-[10px] uppercase tracking-[.2em] text-[#7e9aa5]">Total network cost</div><div className="mt-1 font-mono text-4xl font-bold tracking-[-.06em] text-white md:text-5xl">{fmtCurrency(lastRun.totalCost)}</div><div className="mt-3 flex items-center gap-2 text-sm text-emerald-300"><span className="trend-pill">-{lastRun.savingsPct?.toFixed(1) || '—'}%</span> below single-hub baseline</div><div className="mt-7 h-1 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-emerald-300 to-cyan-300" style={{ width: `${Math.min(lastRun.savingsPct || 0, 100)}%` }} /></div></div></div><div className="metric-tile border-t-2 border-cyan-300 bg-[#0d1926]/80 p-5"><div className="eyebrow"><Package size={12} /> Delivery</div><div className="mt-7 font-mono text-2xl font-bold text-white">{fmtCurrency(lastRun.deliveryCost)}</div><div className="mini-spark mt-5"><span /><span /><span /><span /><span /><span /></div><div className="mt-2 text-[10px] text-cyan-300">variable route spend</div></div><div className="metric-tile border-t-2 border-violet-300 bg-[#121526]/80 p-5"><div className="eyebrow"><MapPin size={12} /> Distance</div><div className="mt-7 font-mono text-2xl font-bold text-white">{lastRun.avgDistance.toFixed(1)}<span className="ml-1 text-sm text-violet-300">km</span></div><div className="distance-track mt-6"><span /></div><div className="mt-2 text-[10px] text-violet-300">average per delivery</div></div><div className="metric-tile border-t-2 border-amber-300 bg-[#1a1720]/80 p-5"><div className="eyebrow"><Zap size={12} /> Hubs online</div><div className="mt-7 font-mono text-2xl font-bold text-white">{lastRun.openWarehouses.length}<span className="ml-1 text-sm text-amber-300">active</span></div><div className="mt-5 flex -space-x-2">{lastRun.openWarehouses.map(hub => <span key={hub} className="hub-avatar">{hub}</span>)}</div><div className="mt-2 text-[10px] text-amber-300">of optimized network</div></div></>}</section>
+    <motion.section
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45, staggerChildren: 0.1 }}
+      className="editorial-kpis mb-7 grid gap-4 lg:grid-cols-[1.4fr_.8fr_.8fr_.8fr]"
+    >
+      {lastRun && <>
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.05 }}
+          className="primary-kpi relative overflow-hidden border-l-2 border-emerald-300 bg-gradient-to-br from-[#102b2d] via-[#0d1e25] to-[#0b141f] p-6 shadow-[0_20px_60px_rgba(5,35,38,.3)]"
+        >
+          <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-emerald-300/10 blur-3xl" />
+          <div className="relative">
+            <div className="flex items-center justify-between">
+              <div className="eyebrow"><TrendingDown size={12} /> Primary outcome</div>
+              <ArrowUpRight size={18} className="text-emerald-300" />
+            </div>
+            <div className="mt-6 text-[10px] uppercase tracking-[.2em] text-[#7e9aa5]">Total network cost</div>
+            <div className="mt-1 font-mono text-4xl font-bold tracking-[-.06em] text-white md:text-5xl">{fmtCurrency(lastRun.totalCost)}</div>
+            <div className="mt-3 flex items-center gap-2 text-sm text-emerald-300">
+              <span className="trend-pill">-{lastRun.savingsPct?.toFixed(1) || '—'}%</span> below single-hub baseline
+            </div>
+            <div className="mt-7 h-1 overflow-hidden rounded-full bg-white/10">
+              <div className="h-full rounded-full bg-gradient-to-r from-emerald-300 to-cyan-300" style={{ width: `${Math.min(lastRun.savingsPct || 0, 100)}%` }} />
+            </div>
+          </div>
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.12 }}
+          className="metric-tile border-t-2 border-cyan-300 bg-[#0d1926]/80 p-5"
+        >
+          <div className="eyebrow"><Package size={12} /> Delivery</div>
+          <div className="mt-7 font-mono text-2xl font-bold text-white">{fmtCurrency(lastRun.deliveryCost)}</div>
+          <div className="mini-spark mt-5"><span /><span /><span /><span /><span /><span /></div>
+          <div className="mt-2 text-[10px] text-cyan-300">variable route spend</div>
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.19 }}
+          className="metric-tile border-t-2 border-violet-300 bg-[#121526]/80 p-5"
+        >
+          <div className="eyebrow"><MapPin size={12} /> Distance</div>
+          <div className="mt-7 font-mono text-2xl font-bold text-white">{lastRun.avgDistance.toFixed(1)}<span className="ml-1 text-sm text-violet-300">km</span></div>
+          <div className="distance-track mt-6"><span /></div>
+          <div className="mt-2 text-[10px] text-violet-300">average per delivery</div>
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.26 }}
+          className="metric-tile border-t-2 border-amber-300 bg-[#1a1720]/80 p-5"
+        >
+          <div className="eyebrow"><Zap size={12} /> Hubs online</div>
+          <div className="mt-7 font-mono text-2xl font-bold text-white">{lastRun.openWarehouses.length}<span className="ml-1 text-sm text-amber-300">active</span></div>
+          <div className="mt-5 flex -space-x-2">{lastRun.openWarehouses.map(hub => <span key={hub} className="hub-avatar">{hub}</span>)}</div>
+          <div className="mt-2 text-[10px] text-amber-300">of optimized network</div>
+        </motion.div>
+      </>}
+    </motion.section>
     <section className="mb-7 grid gap-5 xl:grid-cols-[1.15fr_.85fr]"><div className="visual-panel p-6"><div className="mb-7 flex items-start justify-between"><div><div className="eyebrow"><Activity size={12} /> Financial signal</div><h2 className="mt-2 text-xl font-medium text-white">Cost architecture</h2><p className="mt-1 text-xs text-[#7187a2]">The shape of your optimized network spend</p></div><span className="font-mono text-[10px] text-cyan-300">LIVE / 02</span></div>{lastRun && <CostSpectrum delivery={lastRun.deliveryCost} fixed={lastRun.fixedCost} total={lastRun.totalCost} />}</div><div className="visual-panel p-6"><div className="mb-6 flex items-start justify-between"><div><div className="eyebrow"><Gauge size={12} /> Capacity field</div><h2 className="mt-2 text-xl font-medium text-white">Hub pressure</h2><p className="mt-1 text-xs text-[#7187a2]">Live utilization across selected facilities</p></div><span className="font-mono text-[10px] text-emerald-300">{whRows.length} SIGNALS</span></div><div className="flex flex-wrap items-center justify-around gap-5">{whRows.map(w => <div key={w.name} className="text-center"><CapacityGauge value={w.utilization} color={w.color} label={w.name} /><div className="mt-2 font-mono text-xs text-white">{w.name}</div></div>)}</div></div></section>
     <section className="grid gap-5 lg:grid-cols-[.85fr_1.15fr]"><Card><CardHeader><div className="flex items-center justify-between"><div><div className="eyebrow"><ShieldCheck size={12} /> Solver trace</div><h2 className="mt-2 text-sm font-medium text-white">Last optimization</h2></div><Button variant="ghost" size="sm" onClick={() => onNavigate('history')}>View history</Button></div></CardHeader><CardBody>{lastRun && <div className="space-y-3 text-xs">{[{ label: 'Algorithm', value: lastRun.algorithmUsed }, { label: 'Status', value: lastRun.optimal ? 'Optimal (proven)' : 'Heuristic', good: lastRun.optimal }, { label: 'Runtime', value: `${lastRun.runtimeMs}ms` }, { label: 'Unserved', value: lastRun.unserved?.length ? lastRun.unserved.join(', ') : 'None', good: !lastRun.unserved?.length }].map(row => <div key={row.label} className="trace-row"><span>{row.label}</span><strong className={row.good ? 'text-emerald-300' : 'text-[#d2e1ef]'}>{row.value}</strong></div>)}</div>}</CardBody></Card></section>
   </div>;

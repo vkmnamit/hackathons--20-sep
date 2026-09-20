@@ -31,7 +31,17 @@ export function ProposedSiteMap({
       maxZoom: 18,
     }).addTo(map);
     mapRef.current = map;
-    return () => { map.remove(); mapRef.current = null; };
+
+    const timer = setTimeout(() => map.invalidateSize(), 150);
+    const onResize = () => map.invalidateSize();
+    window.addEventListener('resize', onResize);
+
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', onResize);
+      map.remove();
+      mapRef.current = null;
+    };
   }, []);
 
   useEffect(() => {

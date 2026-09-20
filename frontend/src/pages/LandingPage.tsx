@@ -1,6 +1,7 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { AnimatedTopDock } from '@/components/AnimatedTopDock';
 import {
   Warehouse, ArrowRight, Map, GitCompare, Sliders,
   TrendingUp, Zap, Shield, ChevronRight, Star, X
@@ -184,24 +185,19 @@ export function LandingPage({ onNavigate }: { onNavigate: (p: Page) => void }) {
 
   return (
     <div className="min-h-screen bg-[#0a0a0f] text-[#e8e8ed] overflow-x-hidden">
-      {/* Hero nav */}
-      <nav className="flex items-center justify-between px-6 md:px-12 py-4 border-b border-[#1a1a24]">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded bg-blue-600 flex items-center justify-center">
-            <Warehouse size={14} className="text-white" />
-          </div>
-          <span className="font-semibold text-white tracking-tight">Wherehouse</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" onClick={() => onNavigate('dashboard')}>
-            Explore Demo
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => openAuth('login')}>Sign in</Button>
-          <Button variant="primary" size="sm" onClick={() => openAuth('signup')}>
-            Create account
-          </Button>
-        </div>
-      </nav>
+      {/* Animated Command Bar Top Dock */}
+      <AnimatedTopDock
+        variant="modern"
+        proximity={122}
+        spring={0.19}
+        damping={0.70}
+        widthGrowth={17}
+        heightGrowth={16}
+        drop={3.5}
+        onNavigate={(p) => onNavigate(p as Page)}
+        onSignIn={() => openAuth('login')}
+        onCreateAccount={() => openAuth('signup')}
+      />
 
       {/* Hero */}
       <section className="relative px-6 md:px-12 pt-20 pb-12 max-w-7xl mx-auto">

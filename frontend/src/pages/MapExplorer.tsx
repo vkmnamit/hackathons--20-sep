@@ -151,7 +151,15 @@ export function MapExplorer() {
 
     const onMove = () => setZoom(m.getZoom());
     m.on('zoomend', onMove);
+
+    // Invalidate size shortly after mount and on window resize so tiles render completely
+    const timer = setTimeout(() => m.invalidateSize(), 150);
+    const onResize = () => m.invalidateSize();
+    window.addEventListener('resize', onResize);
+
     return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', onResize);
       m.off('zoomend', onMove);
       m.remove();
       mapRefLeaflet.current = null;
@@ -288,11 +296,11 @@ export function MapExplorer() {
         </div>
       </div>
 
-      <div className="flex-1 relative">
-        <div ref={mapRef} className="absolute inset-0" />
+      <div className="flex-1 relative min-h-[450px]">
+        <div ref={mapRef} className="absolute inset-0 w-full h-full" style={{ minHeight: '450px' }} />
 
         {/* zoom level */}
-        <div className="absolute bottom-left z-10 px-2 py-1 rounded bg-[#111118] border border-[#1e1e2e] text-[10px] font-mono text-[#4a4a60]">
+        <div className="absolute bottom-4 left-4 z-10 px-2 py-1 rounded bg-[#111118]/90 border border-[#1e1e2e] text-[10px] font-mono text-[#a0a0b0] backdrop-blur">
           {Math.round(zoom * 10) / 10}x
         </div>
 

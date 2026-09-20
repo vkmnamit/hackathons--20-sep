@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Bell, ChevronDown, Menu, Zap, Sun, Moon } from 'lucide-react';
+import { Search, Bell, ChevronDown, Menu, Zap, Sun, Moon, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Page } from './Sidebar';
 import { useStore } from '@/lib/store';

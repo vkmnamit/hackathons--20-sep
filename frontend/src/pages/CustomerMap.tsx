@@ -140,7 +140,17 @@ export function CustomerMap({ plan, demo, order, assignments, areaOf, onClear }:
       .bindPopup(`<b>${order.customerName}</b><br/>${addr}<br/>Due ${dateLabel(order.dueHr)}`)
       .openPopup();
     m.fitBounds(L.latLngBounds(bounds).pad(0.25));
-    return () => { m.remove(); mapRef.current = null; };
+
+    const timer = setTimeout(() => m.invalidateSize(), 150);
+    const onResize = () => m.invalidateSize();
+    window.addEventListener('resize', onResize);
+
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', onResize);
+      m.remove();
+      mapRef.current = null;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order.orderId, plan.runtimeMs, demo.warehouses.length]);
 

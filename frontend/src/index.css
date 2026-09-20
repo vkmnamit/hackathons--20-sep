@@ -296,16 +296,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
 
-/* Readability baseline: the first version used compact 9–12px dashboard
-   typography. These overrides keep the information density but make every
-   existing page comfortable to read on normal laptop screens. */
-.text-\[9px\]  { font-size: 0.75rem !important; line-height: 1rem !important; }
-.text-\[10px\] { font-size: 0.8125rem !important; line-height: 1.125rem !important; }
-.text-\[11px\] { font-size: 0.875rem !important; line-height: 1.25rem !important; }
-.text-xs { font-size: 0.875rem !important; line-height: 1.25rem !important; }
-
-button, input, select, textarea {
-  min-height: 2.25rem;
+/* Form control baselines */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea {
+  min-height: 2.1rem;
 }
 
 input, select, textarea {
@@ -343,7 +336,50 @@ input::placeholder, textarea::placeholder {
 .leaflet-container {
   background: #0d0d18 !important;
   font-family: 'DM Sans', sans-serif !important;
+  z-index: 1 !important;
+  height: 100% !important;
+  min-height: 400px;
 }
+.leaflet-pane { z-index: 2 !important; }
+.leaflet-tile-pane { z-index: 2 !important; }
+.leaflet-overlay-pane { z-index: 4 !important; }
+.leaflet-shadow-pane { z-index: 5 !important; }
+.leaflet-marker-pane { z-index: 6 !important; }
+.leaflet-tooltip-pane { z-index: 7 !important; }
+.leaflet-popup-pane { z-index: 8 !important; }
+.leaflet-control { z-index: 9 !important; }
+.wlo-tooltip { background: #111827 !important; border: 1px solid #1e3a5f !important; color: #e2e8f0 !important; border-radius: 6px !important; }
+
+/* Smooth page transitions */
+.page-enter {
+  animation: page-slide-in 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes page-slide-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Glass cards */
+.glass-card {
+  background: rgba(16, 22, 32, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(34, 48, 68, 0.6);
+}
+
+/* Glow effects */
+.glow-blue { box-shadow: 0 0 20px rgba(59, 130, 246, 0.15), 0 0 40px rgba(59, 130, 246, 0.05); }
+.glow-green { box-shadow: 0 0 20px rgba(34, 197, 94, 0.15), 0 0 40px rgba(34, 197, 94, 0.05); }
+
+/* Animated skeleton loading */
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+.skeleton { animation: skeleton-pulse 1.5s ease-in-out infinite; background: linear-gradient(90deg, #111923 25%, #182130 50%, #111923 75%); }
+
+/* Map container absolute fill fix */
+.map-fill { position: absolute; inset: 0; width: 100%; height: 100%; }
 
 html:not(.light) .bg-\[\#0a0a0f\] { background-color: transparent !important; }
 html:not(.light) .bg-\[\#0d0d16\], html:not(.light) .bg-\[\#0d0d18\] { background-color: rgba(10, 18, 29, .78) !important; }
@@ -353,3 +389,4 @@ html:not(.light) .border-\[\#1e1e2e\], html:not(.light) .border-\[\#1a1a24\] { b
 html.light .leaflet-container {
   background: #f1f5f9 !important;
 }
+
