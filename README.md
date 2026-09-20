@@ -1,4 +1,4 @@
-# 🌐 GRIDPOINT / Wherehouse
+# 🌐Wherehouse
 ### Capacitated Warehouse Location & Logistics Network Optimization Platform
 > **Hack-a-Matics Hackathon · Theme: VECTOR**  
 > **Live Production App:** [https://hackathons-20-sep-production.up.railway.app/](https://hackathons-20-sep-production.up.railway.app/)
@@ -23,7 +23,7 @@
 
 ## 🚀 Executive Summary
 
-**GRIDPOINT** is a high-performance, location-agnostic warehouse placement, capacitated assignment, and last-mile logistics optimization platform. Designed for modern quick-commerce, retail distribution, and 3PL supply chains, it models and solves the **Capacitated Facility Location Problem (CFLP)** and **Vehicle Routing Problem (VRP)** using rigorous discrete and continuous mathematical algorithms implemented in **C++17**, wrapped in a zero-dependency **Node.js REST API**, and visualized in an analytical **React 19 + TypeScript + Vite 6 + Tailwind CSS v4** workspace.
+**Wherehouse** is a high-performance, location-agnostic warehouse placement, capacitated assignment, and last-mile logistics optimization platform. Designed for modern quick-commerce, retail distribution, and 3PL supply chains, it models and solves the **Capacitated Facility Location Problem (CFLP)** and **Vehicle Routing Problem (VRP)** using rigorous discrete and continuous mathematical algorithms implemented in **C++17**, wrapped in a zero-dependency **Node.js REST API**, and visualized in an analytical **React 19 + TypeScript + Vite 6 + Tailwind CSS v4** workspace.
 
 ---
 
@@ -179,7 +179,7 @@ npm test
 
 ## 🗄 Database Setup & Supabase Sync
 
-GRIDPOINT includes built-in offline local memory storage and full cloud persistence with **Supabase PostgreSQL**.
+Wherehouse includes built-in offline local memory storage and full cloud persistence with **Supabase PostgreSQL**.
 
 To link your own Supabase project:
 1. Copy `.env.example` to `backend/.env`:
@@ -216,6 +216,6 @@ We gratefully acknowledge the following open-source projects, tools, and librari
 
 ## 👥 Team & Submission Information
 - **Event**: Hack-a-Matics Hackathon 2024
-- **Project**: GRIDPOINT (Wherehouse)
+- **Project**:Wherehouse
 - **Track**: VECTOR
 - **Authors**: Divyansh Duggad, Namit Raj, Navya Agrawal & Navya Pandey
