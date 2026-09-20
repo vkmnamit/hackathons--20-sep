@@ -57,16 +57,6 @@ export function TopNav({ onMenuOpen, currentPage, onLogout }: {
         />
       </div>
 
-      {/* Theme Toggle */}
-      <button
-        onClick={toggleTheme}
-        title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-        className="w-8 h-8 flex items-center justify-center rounded hover:bg-[#1a1a24] text-[#6b6b80] hover:text-[#c0c0d0] transition-colors"
-        aria-label="Toggle theme"
-      >
-        {theme === 'dark' ? <Sun size={15} className="text-amber-400" /> : <Moon size={15} className="text-blue-500" />}
-      </button>
-
       {/* Notifications */}
       <div className="relative">
         <button

@@ -148,8 +148,22 @@ function readBody(req){
     req.on('data',function(c){b+=c; if(b.length>20*1024*1024) rej(new Error('body too large'));});
     req.on('end',function(){res(b);}); req.on('error',rej); });
 }
-const MIME={'.html':'text/html','.js':'text/javascript','.css':'text/css',
-  '.json':'application/json','.csv':'text/csv','.png':'image/png'};
+const MIME = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.csv': 'text/csv; charset=utf-8',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
+  '.ttf': 'font/ttf',
+  '.webp': 'image/webp'
+};
 const server = http.createServer(function(req,res){
   const u = url.parse(req.url,true);
   if(req.method==='OPTIONS'){ send(res,200,{}); return; }
@@ -157,14 +171,17 @@ const server = http.createServer(function(req,res){
     if(req.method==='GET' && (u.pathname==='/'||u.pathname==='/index.html')){
       const dist=path.join(ROOT,'frontend','dist','index.html');
       const f=fs.existsSync(dist)?dist:path.join(ROOT,'frontend','index.html');
-      res.writeHead(200,{'Content-Type':'text/html','Cache-Control':'no-cache, no-store, must-revalidate','Pragma':'no-cache','Expires':'0'});
+      res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-cache, no-store, must-revalidate','Pragma':'no-cache','Expires':'0'});
       fs.createReadStream(f).pipe(res); return;
     }
     if(req.method==='GET' && u.pathname.indexOf('/assets/')===0){
       const f=path.join(ROOT,'frontend','dist',u.pathname.replace(/\.\./g,''));
       if(fs.existsSync(f)&&fs.statSync(f).isFile()){
-        const ext=path.extname(f);
-        res.writeHead(200,{'Content-Type':ext==='.js'?'text/javascript':ext==='.css'?'text/css':'application/octet-stream'});
+        const ext=path.extname(f).toLowerCase();
+        res.writeHead(200,{
+          'Content-Type':MIME[ext]||'application/octet-stream',
+          'Cache-Control':'public, max-age=31536000, immutable'
+        });
         fs.createReadStream(f).pipe(res); return;
       }
       send(res,404,{error:'not found'}); return;

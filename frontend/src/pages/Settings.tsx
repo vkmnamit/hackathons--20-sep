@@ -222,37 +222,6 @@ export function Settings() {
           </span>
         </CardHeader>
         <CardBody className="space-y-5">
-          {/* Theme Mode */}
-          <div>
-            <label className="text-xs text-[#5a5a70] block mb-2">Interface Theme</label>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setTheme('dark')}
-                className={`flex items-center gap-2 px-4 py-2 rounded border text-xs font-mono transition-all ${
-                  theme === 'dark'
-                    ? 'border-blue-500 bg-blue-500/10 text-white font-semibold shadow-sm'
-                    : 'border-[#1e1e2e] bg-[#0d0d16] text-[#8080a0] hover:text-white'
-                }`}
-              >
-                <Moon size={14} className={theme === 'dark' ? 'text-blue-400' : 'text-[#6b6b80]'} />
-                <span>Dark Mode</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setTheme('light')}
-                className={`flex items-center gap-2 px-4 py-2 rounded border text-xs font-mono transition-all ${
-                  theme === 'light'
-                    ? 'border-blue-500 bg-blue-500/10 text-blue-600 font-semibold shadow-sm'
-                    : 'border-[#1e1e2e] bg-[#0d0d16] text-[#8080a0] hover:text-white'
-                }`}
-              >
-                <Sun size={14} className={theme === 'light' ? 'text-amber-500' : 'text-[#6b6b80]'} />
-                <span>Light Mode</span>
-              </button>
-            </div>
-          </div>
-
           {/* Color presets */}
           <div>
             <label className="text-xs text-[#5a5a70] block mb-2">Color Presets</label>
